@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.conf import ENVIRONMENT_VARIABLE
 import utils
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,8 +43,27 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'multiselectfield',
-    'user_profile_api'
+    'user_profile_api',
+    'celery',
 ]
+
+CELERY_BEAT_SCHEDULE = {
+      'add-every-30-seconds': {
+        'task': 'user_profile_api.tasks.add',
+        'schedule': crontab(hour=20, minute=30, day_of_week=4),
+        'args': (2, 2),
+        'options': {
+            'expires': 15.0,
+        },
+    },
+}
+
+CELERY_ALWAYS_EAGER = True
+# Celery Configuration Options
+CELERY_TIMEZONE = "America/Argentina/Buenos_Aires"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+BROKER_URL = os.environ.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672/')
 
 JAZZMIN_SETTINGS = {
     "site_title": "Security Admin",
@@ -200,6 +220,7 @@ GATEWAY_RTSP = '554';
 GATEWAY_USER = 'admin'
 GATEWAY_PASSWORD = utils.get_secret('GATEWAY_PASSWORD')
 DEVICE_UUID = 'D76C6D74-4B20-4BB1-8C4C-B51244DF3026'
+GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
 
 BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
 

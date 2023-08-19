@@ -7,22 +7,19 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 import os
 from django import forms
-from user_profile_api.services import get_default_user_device_id
-
-class DeviceInline(admin.TabularInline):
-    model = Device.users.through
-    extra = 1
-
+from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
 
 
 @admin.register(UserProfile)
 class ManageUser(admin.ModelAdmin):
-    list_display=('user_device_id', 'email', 'first_name', 'last_name', 'is_active', 'is_staff', 'profile_type', 'dni', 'address', 'phone', 'emergency_phone', 'fileImage')
+    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'profile_type', 'fileImage')
     ordering=('user_device_id',)
     search_fields= ('user_device_id', 'dni', 'email', 'first_name', 'last_name')
     list_per_page=50
-    readonly_fields=('date_created', 'last_updated')
-    inlines = [DeviceInline]
+    filter_vertical = ('subject',)
+    exclude = ('planTemplateNo',)
+    readonly_fields=('date_created', 'last_updated', 'timeType')
+
 
     def save_model(self, request, obj, form, change):
         obj.last_updated = timezone.now()
@@ -33,6 +30,8 @@ class ManageUser(admin.ModelAdmin):
         default_user_device_id = get_default_user_device_id()
         form.base_fields['user_device_id'].initial = default_user_device_id
         return form
+
+
 
 
 @admin.register(Room)
@@ -71,13 +70,18 @@ class ManageCareerSubjectYear(admin.ModelAdmin):
     list_per_page=10
 
 
-
 @admin.register(SubjectSchedule)
 class ManageSubjectSchedule(admin.ModelAdmin):
-    list_display=('career_subject_year', 'day', 'begin_time', 'end_time')
-    ordering=('id',)
-    search_fields=('id', 'career_subject_year')
+    list_display=('horario_id', 'device', 'career_subject_year', 'day', 'begin_time', 'end_time')
+    ordering=('horario_id',)
+    search_fields=('horario_id', 'career_subject_year')
     list_per_page=10
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        default_horario_id = get_default_schedule_id()
+        form.base_fields['horario_id'].initial = default_horario_id
+        return form
 
 @admin.register(Device)
 class ManageDevice(admin.ModelAdmin):

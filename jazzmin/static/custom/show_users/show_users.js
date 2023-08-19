@@ -1,5 +1,18 @@
 function loadTableData() {
-  return fetch('get_users')
+  var tablaElement = document.getElementById('tabla');
+  var device = tablaElement.getAttribute('data-device');
+
+
+  var domain = window.location.hostname;
+  var port = window.location.port;
+
+  var url = 'http://' + domain;
+  if (port) {
+    url += ':' + port;
+  }
+  url += '/show_users/' + device + '/get_users';
+
+  return fetch(url)
     .then(response => response.json())
     .then(data => {
       console.log(data)

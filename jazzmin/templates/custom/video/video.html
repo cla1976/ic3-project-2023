@@ -5,11 +5,14 @@
 
 <script>
 $(document).ready(function() {
-  $('#my-form').submit(function(event) {
+  $('#my-form button').click(function(event) {
     event.preventDefault();
     
+    var device = $(this).attr('data-value');
+    var url = '/video/open_door/' + device;
+
     $.ajax({
-      url: '{% url 'video_open_door' %}',
+      url: url,
       type: 'POST',
       data: $('#my-form').serialize(),
       success: function(data) {
@@ -21,6 +24,7 @@ $(document).ready(function() {
 </script>
 
 
+
 <html>
   <head>
     <meta charset="utf-8">
@@ -30,6 +34,11 @@ $(document).ready(function() {
         margin: 0;
         padding: 0;
         background-color: #f2f2f2;
+      }
+      #video-container {
+        width: 100vh;
+        height: 600px;
+        box-sizing: border-box;   
       }
       #container {
         display: flex;
@@ -73,15 +82,17 @@ $(document).ready(function() {
   </head>
   <body>
     <div id="container">
-      <div id="video">
-        <img src="{% url 'video_feed' %}" style="width:100%;height:100%;">
-      </div>
-      <div id="form-container">
-        <form id="my-form">
-          {% csrf_token %}
-          <button type="submit">Abrir puerta</button>
-        </form>
-      </div>
+        <div id="video-container">
+            <iframe src=" {{ link }}" width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+            <div id="form-container">
+              <form id="my-form">
+                {% for device in devices %}
+                  {% csrf_token %}
+                  <button type="submit" data-value="{{ device }}">Puerta {{ device }}</button>
+                {% endfor %}
+              </form>
+            </div>
     </div>
   </body>
 </html>

@@ -94,7 +94,7 @@
     $('#my-button').click(function(event) {
       event.preventDefault();
       $.ajax({
-        url: '{% url 'get_events' %}',
+        url: '{% url 'get_events' device %}',
         type: 'POST',
         data: $('#my-form').serialize(),
         success: function(data) {
