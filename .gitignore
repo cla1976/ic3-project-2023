@@ -2,6 +2,7 @@
 *.sw[po]
 *~
 /secrets.json
+/requirements.txt
 
 ### VisualStudioCode ###
 .vscode/*
