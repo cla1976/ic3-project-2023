@@ -2,7 +2,11 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+import subprocess
 
+if 'runserver' in sys.argv:
+    # Lanza el archivo go2rtc.exe como un proceso independiente
+    subprocess.Popen(['go2rtc.exe'])
 
 def main():
     """Run administrative tasks."""
@@ -17,6 +21,6 @@ def main():
         ) from exc
     execute_from_command_line(sys.argv)
 
-
 if __name__ == '__main__':
     main()
+
