@@ -16,6 +16,7 @@ from user_profile_api.urls_services import (
     URL_COUNT_USER,
     URL_RECORD_IMAGE,
     URL_UserRightWeekPlanCfg,
+    URL_FaceDataRecord,
 )
 from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from requests.auth import HTTPDigestAuth
@@ -161,26 +162,40 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 if response.status_code == 200:
                         print("Usuario creado y cargado con la API y CAMPO")
                         if instance.fileImage:
-                            base_url = BASE_URL
-                            record_url = f"{URL_RECORD_IMAGE}?format=json"
-                            full_url = f"{base_url}{record_url}"
+
+                            ips = []
+
+                            for subject_schedule in subject_schedules:
+                                device = subject_schedule.device
+                                if device and device.is_active:  
+                                    ips.append(device.ip)
+
+                            print(ips)
+
+                            for ip_address in ips:
                                 
-                            payload = {
-                                "data": "{\"faceLibType\":\"blackFD\",\"FDID\":\"1\",\"FPID\":\"" + str(instance.user_device_id) + "\"}"
-                            }
+                                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                                record_url = f"{URL_RECORD_IMAGE}?format=json"
+                                full_url = f"{base_url}{record_url}"
+                                    
+                                print("Acá es 1")
 
-                            files=[('image',('Imagen',open(str(instance.fileImage),'rb'),'image/jpeg'))]
+                                payload = {
+                                    "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.user_device_id) + '"}', 'application/json'),
+                                    "img": ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
+                                }
 
-                            headers = {}
+                                print(payload)
 
-                            response = requests.request("PUT", full_url, headers=headers, data=payload, files=files, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
 
-                            if response.status_code == 200:
-                                print("Image created succesfully and sent to API!")
-                                print("User created successfully and data sent to API!")
-                            else:
-                                print("Error sending image to API")
-                                instance.delete()
+                                response = requests.put(full_url, files=payload, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                                if response.status_code == 200:
+                                    print("Image created succesfully and sent to API!")
+                                    print("User created successfully and data sent to API!")
+                                else:
+                                    raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
+
                 else:
                     raise Exception("Error enviando el usuario al dispositivo: {}".format(response.text))
 
@@ -408,52 +423,64 @@ def send_user_data(sender, instance, created, **kwargs):
 
         if not instance.subject:
 
-            base_url = BASE_URL
-            record_url = f"{URL_RECORD_USER}?format=json"
-            full_url = f"{base_url}{record_url}"
-            headers = {"Content-type": "application/json"}
+            subject_schedules = instance.subject.all()
+            ips = []
 
-            begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
-            end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
+            for subject_schedule in subject_schedules:
+                device = subject_schedule.device
+                if device and device.is_active:  
+                    ips.append(device.ip)
 
-            data = {
-                "UserInfo": 
-                    {
-                        "employeeNo": str(instance.user_device_id),
-                        "name": str(instance.first_name + " " + instance.last_name),
-                        "userType": instance.profile_type,
-                        "gender": instance.gender,
-                        "Valid": {
-                            "enable": instance.is_active,
-                            "beginTime": begin_time_str,
-                            "endTime": end_time_str,
-                            "timeType": instance.timeType
-                        },
-                        "doorRight": instance.doorRight,
-                        "RightPlan": [
-                            {
-                                "doorNo": instance.doorNo,
-                            }
-                        ],
-                        "localUIRight": instance.is_staff,
-                        "userVerifyMode": instance.userVerifyMode
+            print(ips)
+
+            for ip_address in ips:
+
+                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                record_url = f"{URL_RECORD_USER}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
+                end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
+
+                data = {
+                    "UserInfo": 
+                        {
+                            "employeeNo": str(instance.user_device_id),
+                            "name": str(instance.first_name + " " + instance.last_name),
+                            "userType": instance.profile_type,
+                            "gender": instance.gender,
+                            "Valid": {
+                                "enable": instance.is_active,
+                                "beginTime": begin_time_str,
+                                "endTime": end_time_str,
+                                "timeType": instance.timeType
+                            },
+                            "doorRight": instance.doorRight,
+                            "RightPlan": [
+                                {
+                                    "doorNo": instance.doorNo,
+                                }
+                            ],
+                            "localUIRight": instance.is_staff,
+                            "userVerifyMode": instance.userVerifyMode
+                        }
                     }
-                }
 
-            print("Probemos para ver device: ")
-            print(instance.subject)
+                print("Probemos para ver device: ")
+                print(instance.subject)
 
-            response = requests.post(
-                full_url,
-                headers=headers,
-                data=json.dumps(data),
-                auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
-            )
+                response = requests.post(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
 
-            if response.status_code == 200:
-                    print("Usuario creado y cargado con la API (sin horario)")
-            else:
-                raise Exception("Error enviando el usuario al dispositivo: {}".format(response.text))
+                if response.status_code == 200:
+                        print("Usuario creado y cargado con la API (sin horario) 1")
+                else:
+                    raise Exception("Error enviando el usuario al dispositivo: {}".format(response.text))
 
     else:
         if mockeo:
@@ -519,11 +546,60 @@ def send_user_data(sender, instance, created, **kwargs):
                     auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
                 )
 
-
                 if response.status_code == 200:
-                    print("Usuario modificado y cargado por la API (sin horario)")
+                    print(response.text)
+                    modificado = True 
                 else:
-                    raise Exception("Failed to modify instance: {}".format(response.text))
+                    modificado = False
+                    mensaje1 = response.text
+                    print("Mensaje 1")
+                    print(mensaje1)
+
+                    
+            if not instance.fileImage:
+
+                subject_schedules = instance.subject.all()
+                ips = []
+
+                for subject_schedule in subject_schedules:
+                    device = subject_schedule.device
+                    if device and device.is_active:  
+                        ips.append(device.ip)
+
+                print(ips)
+
+                for ip_address in ips:
+                    base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                    record_url = f"{URL_RECORD_IMAGE}?format=json"
+                    full_url = f"{base_url}{record_url}"
+
+                    data = {
+                        "faceLibType": "blackFD",
+                        "FDID": "1",
+                        "FPID": str(instance.user_device_id),
+                        "deleteFP": True
+                    }
+
+                    print("Acá es 4")
+
+                    print(data)
+
+
+                    response = requests.put(full_url, data=json.dumps(data), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+
+                    if response.status_code == 200:
+                        imagen_borrada = True
+                    else:
+                        imagen_borrada = False
+                        print("Mensaje 2")
+                        mensaje2 = response.text
+
+                    if response.status_code == 200:
+                        print("Usuario modificado y cargado por la API (sin horario) 2")
+                    else:
+                        print(mensaje2)
+                        raise Exception("Failed to modify instance: {}".format(response.text))
 
             
 
@@ -537,45 +613,77 @@ def send_image_data(sender, created, instance, **kwargs):
         else:
             original_instance = sender.objects.get(pk=instance.pk)
             if instance.fileImage != original_instance.fileImage:
-                base_url = BASE_URL
-                record_url = f"{URL_RECORD_IMAGE}?format=json"
-                full_url = f"{base_url}{record_url}"
+                subject_schedules = instance.subject.all()
+                ips = []
 
-                payload = {"data": '{ "faceLibType": "blackFD", "FDID": "1", "FPID": "2", "deleteFP": true }'}
+                for subject_schedule in subject_schedules:
+                    device = subject_schedule.device
+                    if device and device.is_active:  
+                        ips.append(device.ip)
 
-                files=[('image',('Imagen',open(str(instance.fileImage),'rb'),'image/jpeg'))]
+                print(ips)
 
-                headers = {}
+                for ip_address in ips:
 
-                response = requests.request("PUT", full_url, headers=headers, data=payload, files=files, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+                    base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                    record_url = f"{URL_RECORD_IMAGE}?format=json"
+                    full_url = f"{base_url}{record_url}"
+
+                    data = {
+                        "faceLibType": "blackFD",
+                        "FDID": "1",
+                        "FPID": str(instance.user_device_id),
+                        "deleteFP": True
+                    }
+
+                    print("Acá es 2")
+
+                    print(data)
 
 
-                if response.status_code == 200:
-                    print("Image deleted succesfully and sent to API!")
-                    print("User deleted successfully and data sent to API!")
-                else:
-                    raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
+                    response = requests.request("PUT", full_url, data=json.dumps(data), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+
+                    if response.status_code == 200:
+                        print("Image deleted succesfully and sent to API!")
+                        print("User deleted successfully and data sent to API!")
+                    else:
+                        raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
 
             if instance.fileImage:
-                base_url = BASE_URL
-                record_url = f"{URL_RECORD_IMAGE}?format=json"
-                full_url = f"{base_url}{record_url}"
+
+                subject_schedules = instance.subject.all()
+                ips = []
+
+                for subject_schedule in subject_schedules:
+                    device = subject_schedule.device
+                    if device and device.is_active:  
+                        ips.append(device.ip)
+
+                print(ips)
+
+                for ip_address in ips:
+                    base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                    record_url = f"{URL_RECORD_IMAGE}?format=json"
+                    full_url = f"{base_url}{record_url}"
+
+                    print("Acá es 3")
                     
-                payload = {
-                    "data": "{\"faceLibType\":\"blackFD\",\"FDID\":\"1\",\"FPID\":\"" + str(instance.user_device_id) + "\"}"
-                }
 
-                files=[('image',('Imagen',open(str(instance.fileImage),'rb'),'image/jpeg'))]
+                    payload = {
+                        "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.user_device_id) + '"}', 'application/json'),
+                        "img": ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
+                    }
 
-                headers = {}
+                    print(payload)
 
-                response = requests.request("PUT", full_url, headers=headers, data=payload, files=files, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+                    response = requests.put(full_url, files=payload, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
 
-                if response.status_code == 200:
-                    print("Image modified succesfully and sent to API!")
-                    print("User modified successfully and data sent to API!")
-                else:
-                    raise Exception("Error modificando la imagen: {}".format(response.text))
+                    if response.status_code == 200:
+                        print("Image created succesfully and sent to API!")
+                        print("User created successfully and data sent to API!")
+                    else:
+                        raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
 
 
 
@@ -687,31 +795,49 @@ def delete_user_data(sender, instance, **kwargs):
             return
 
     pre_delete.disconnect(delete_user_data, sender=UserProfile)
-    base_url = BASE_URL
+    
+    subject_schedules = instance.subject.all()
+    ips = []
 
-    record_url = f"{URL_DELETE_USER}?format=json"
-    full_url = f"{base_url}{record_url}"
-    headers = {"Content-type": "application/json"}
+    for subject_schedule in subject_schedules:
+        device = subject_schedule.device
+        if device and device.is_active:  
+            ips.append(device.ip)
 
-    data = {
-        "UserInfoDetail": {
-            "mode": "byEmployeeNo",
-            "EmployeeNoList": [{"employeeNo": str(instance.user_device_id)}],
+    print(ips)
+
+    for ip_address in ips:
+        base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+
+        print(base_url)
+
+        record_url = f"{URL_DELETE_USER}?format=json"
+        full_url = f"{base_url}{record_url}"
+        headers = {"Content-type": "application/json"}
+
+        data = {
+            "UserInfoDetail": {
+                "mode": "byEmployeeNo",
+                "EmployeeNoList": [{"employeeNo": str(instance.user_device_id)}],
+            }
         }
-    }
 
-    response = requests.put(
-        full_url,
-        headers=headers,
-        data=json.dumps(data),
-        auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
-    )
+        response = requests.put(
+            full_url,
+            headers=headers,
+            data=json.dumps(data),
+            auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+        )
 
-    if response.status_code == 200:
-        print("User deleted successfully!")
-        instance.delete()
-    else:
-        print("Error: can't delete user")
-        raise Exception("Failed to delete instance: {}".format(response.text))
+        if response.status_code == 200:
+            print("User deleted successfully!")
+            instance.delete()
+        else:
+            print("Error: can't delete user")
+            raise Exception("Failed to delete instance: {}".format(response.text))
 
-    pre_delete.connect(delete_user_data, sender=UserProfile)
+        pre_delete.connect(delete_user_data, sender=UserProfile)
+    
+
+
+
