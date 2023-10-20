@@ -18,7 +18,7 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_FaceDataRecord,
 )
-from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
+from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from requests.auth import HTTPDigestAuth
 from user_profile_api.models import UserProfile, SubjectSchedule, Device
 from user_profile_api.services import get_default_user_device_id
