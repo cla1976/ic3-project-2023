@@ -85,7 +85,7 @@ class ManageSubjectSchedule(admin.ModelAdmin):
 
 @admin.register(Device)
 class ManageDevice(admin.ModelAdmin):
-    list_display=('id', 'device','date_purchased','is_active', 'is_synchronized')
+    list_display=('id', 'device', 'door_port','date_purchased','is_active', 'is_synchronized', 'user', 'password', 'massive_opening')
     ordering=('id',)
     search_fields= ('id','device','date_purchased','user')
     list_per_page=10

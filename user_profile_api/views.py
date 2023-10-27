@@ -14,7 +14,8 @@ import requests
 from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
-from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_CAMERAS
+#from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_CAMERAS
+from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS
 from user_profile_api.urls_services import (
     URL_STREAM_101,
     URL_OPEN_DOOR_1,
@@ -68,8 +69,12 @@ def video(request):
 def video_open_door(request, device):
     print(device)
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":85"
+    base_url = "http://" + ip + ":" + door_port
     door_url = f"{URL_OPEN_DOOR_1}?format=xml"
     url = f"{base_url}{door_url}"
     print(url)
@@ -79,6 +84,34 @@ def video_open_door(request, device):
     }
     response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
     return HttpResponse('')
+
+# Vista de la funcionalidad para realizar la apertura masiva de las puertas habilitadas.
+
+@user_passes_test(check_admin)
+def massive_door_opening(request):
+    devices = Device.objects.all()  # Obtén todos los dispositivos
+
+    for device in devices:
+        ip = device.ip
+        door_port = device.door_port
+        GATEWAY_USER = device.user
+        GATEWAY_PASSWORD = device.password
+        massive_opening = device.massive_opening
+
+        base_url = f"http://{ip}:{door_port}"
+        door_url = f"{URL_OPEN_DOOR_1}?format=xml"
+        url = f"{base_url}{door_url}"
+        payload = "<RemoteControlDoor xmlns=\"http://www.isapi.org/ver20/XMLSchema\" version=\"2.0\"><cmd>open</cmd></RemoteControlDoor>"
+        headers = {
+            'Content-Type': 'application/xml'
+        }
+
+        if massive_opening:
+            response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            # Puedes agregar lógica adicional para manejar la respuesta de cada dispositivo si es necesario
+
+    return HttpResponse('Todas las puertas han sido abiertas')
 
 
 # Vista de la funcionalidad para modificar los parámetros de una puerta asignada a un
@@ -100,8 +133,11 @@ class GetDoorsView(TemplateView):
         leaderCardOpenDuration = request.POST.get('leaderCardOpenDuration')
 
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
+        door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+        GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+        GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-        base_url = "http://" + ip + ":85"
+        base_url = "http://" + ip + ":" + door_port
         door_url = f"{URL_DOOR_1}?format=xml"
         url = f"{base_url}{door_url}"
         print(url)
@@ -113,7 +149,7 @@ class GetDoorsView(TemplateView):
         }
         response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
         
-        base_url = "http://" + ip + ":85"
+        base_url = "http://" + ip + ":" + door_port
         door_url = f"{URL_DOOR_LOCKTYPE}?format=json"
         url = f"{base_url}{door_url}"
         print(url)
@@ -142,8 +178,11 @@ def show_doors(request, device):
     print(device)
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
     print(ip)
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":85"
+    base_url = "http://" + ip + ":" + door_port
     record_url = f"{URL_DOOR_1}"
     full_url = f"{base_url}{record_url}"
 
@@ -163,7 +202,7 @@ def show_doors(request, device):
             enableLeaderCard = root.find('./{http://www.isapi.org/ver20/XMLSchema}enableLeaderCard').text
             leaderCardOpenDuration = root.find('./{http://www.isapi.org/ver20/XMLSchema}leaderCardOpenDuration').text
 
-            base_url = "http://" + ip + ":85"
+            base_url = "http://" + ip + ":" + door_port
             record_url = f"{URL_DOOR_LOCKTYPE}"
             full_url = f"{base_url}{record_url}"
 
@@ -199,7 +238,11 @@ def show_doors(request, device):
 
 def get_users(request, device):
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
-    base_url = "http://" + ip + ":85"
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
+
+    base_url = "http://" + ip + ":" + door_port
     record_url = f"{URL_SEARCH_USER}?format=json"
     full_url = f"{base_url}{record_url}"
     payload = json.dumps({
@@ -223,7 +266,11 @@ class GetEventsView(TemplateView):
 
     def post(self, request, device, *args, **kwargs):
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
-        base_url = "http://" + ip + ":85"
+        door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+        GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+        GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
+
+        base_url = "http://" + ip + ":" + door_port
         record_url = f"{URL_AcsEvent}?format=json"
         full_url = f"{base_url}{record_url}"
 

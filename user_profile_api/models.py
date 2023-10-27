@@ -58,11 +58,16 @@ VERIFYMODE = (('cardOrFace', 'Tarjeta o cara'),
               ('face', 'Cara'))
 
 class Device(models.Model):
-    device = models.CharField(unique=True, max_length=50)
-    ip = models.CharField(unique=True, max_length=50)
-    date_purchased = models.DateField(editable=True)
-    is_active = models.BooleanField(default=False)
-    is_synchronized = models.BooleanField(default=True)
+    device = models.CharField(unique=True, max_length=50, null=True)
+    ip = models.CharField(unique=True, max_length=50, null=True)
+    door_port = models.IntegerField(null=True)
+    date_purchased = models.DateField(editable=True, null=True)
+    is_active = models.BooleanField(default=False, null=True)
+    is_synchronized = models.BooleanField(default=True, null=True)
+    user = models.CharField(max_length=50, null=True)
+    password = models.CharField(max_length=50, null=True)
+    massive_opening = models.BooleanField(default=False, null=True)
+
 
 
     def __str__(self):
@@ -75,7 +80,7 @@ class Device(models.Model):
         verbose_name_plural = "Dispositivos"
 
 class Career(models.Model):
-    name_career = models.CharField(unique=True, max_length=100)
+    name_career = models.CharField(unique=True, max_length=100, null=True)
 
     def __str__(self):
         return self.name_career
@@ -86,7 +91,7 @@ class Career(models.Model):
 
 
 class Subject(models.Model):
-    subject = models.CharField(unique=True, max_length=100)
+    subject = models.CharField(unique=True, max_length=100, null=True)
 
     def __str__(self):
         return self.subject
@@ -119,10 +124,10 @@ class SubjectSchedule(models.Model):
 
 
 
-    horario_id = models.IntegerField(blank=True, verbose_name="ID de horario")
-    begin_time = models.TimeField()
-    end_time = models.TimeField()
-    day = MultiSelectField(choices=WEEK, max_length=255)
+    horario_id = models.IntegerField(blank=True, verbose_name="ID de horario", null=True)
+    begin_time = models.TimeField(null=True)
+    end_time = models.TimeField(null=True)
+    day = MultiSelectField(choices=WEEK, max_length=255, null=True)
     device = models.ForeignKey(Device, null=True, on_delete=models.CASCADE, verbose_name="Dispositivos")
     career_subject_year = models.ForeignKey(CareerSubjectYear, on_delete=models.CASCADE)
 
@@ -135,29 +140,29 @@ class SubjectSchedule(models.Model):
         unique_together = ('horario_id', 'device')
 
 class UserProfile(models.Model):
-    user_device_id = models.IntegerField(unique=True, blank=True, verbose_name="ID de usuario")
+    user_device_id = models.IntegerField(unique=True, blank=True, verbose_name="ID de usuario", null=True)
     first_name = models.CharField(max_length=100, null=True, verbose_name="Nombre")
     last_name = models.CharField(max_length=100, null=True, verbose_name="Apellido")
     dni = models.CharField(max_length=100, unique=True, null=True, verbose_name="DNI")
-    email = models.EmailField(max_length=255, unique=True, verbose_name="Correo electrónico")
-    gender = models.CharField(max_length=10, choices=GENDER, verbose_name="Género")
-    subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir")
-    userVerifyMode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación")
-    doorRight = models.CharField(max_length=100, verbose_name="Puerta proxima")
-    doorNo = models.CharField(max_length=100, verbose_name="Número de puerta")
-    is_active = models.BooleanField(default=True, verbose_name="¿Usuario habilitado?")
-    is_staff = models.BooleanField(default=False, verbose_name="¿Usuario administrador?")
-    profile_type = models.CharField(max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario")
-    date_created = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha creación")
-    last_updated = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha actualización")
+    email = models.EmailField(max_length=255, unique=True, verbose_name="Correo electrónico", null=True)
+    gender = models.CharField(max_length=10, choices=GENDER, verbose_name="Género", null=True)
+    subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir", null=True)
+    userVerifyMode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación", null=True)
+    doorRight = models.CharField(max_length=100, verbose_name="Puerta proxima", null=True)
+    doorNo = models.CharField(max_length=100, verbose_name="Número de puerta", null=True)
+    is_active = models.BooleanField(default=True, verbose_name="¿Usuario habilitado?", null=True)
+    is_staff = models.BooleanField(default=False, verbose_name="¿Usuario administrador?", null=True)
+    profile_type = models.CharField(max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario", null=True)
+    date_created = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha creación", null=True)
+    last_updated = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha actualización", null=True)
     address = models.CharField(max_length=100, null=True, verbose_name="Dirección")
     phone = models.CharField(max_length=100, null=True, blank=True, verbose_name="Teléfono")
-    beginTime = models.DateTimeField(editable=True, verbose_name="Fecha inicio de habilitación")
-    endTime = models.DateTimeField(editable=True, verbose_name="Fecha final de habilitación")
-    fileImage = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen")
-    card = models.CharField(max_length=20, blank=True, verbose_name="Tarjeta")
-    cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta")
-    timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora")
+    beginTime = models.DateTimeField(editable=True, verbose_name="Fecha inicio de habilitación", null=True)
+    endTime = models.DateTimeField(editable=True, verbose_name="Fecha final de habilitación", null=True)
+    fileImage = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen", null=True)
+    card = models.CharField(max_length=20, blank=True, verbose_name="Tarjeta", null=True)
+    cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta", null=True)
+    timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora", null=True)
     
 
     def __str__(self):
@@ -172,8 +177,8 @@ class UserProfile(models.Model):
 
 
 class Room(models.Model):
-    room = models.CharField(max_length=100)
-    location = models.CharField(max_length=100)
+    room = models.CharField(max_length=100, null=True)
+    location = models.CharField(max_length=100, null=True)
     device = models.OneToOneField(Device, on_delete=models.CASCADE)
 
     def __str__(self):
