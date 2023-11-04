@@ -33,7 +33,7 @@ from unidecode import unidecode
 # Se cambia el booleano para comprobar funcionalidades sin necesidad
 # de tener conectado un dispositivo
 
-mockeo = True
+mockeo = False
 
 # Señal que se acciona al detectar un cambio en las relaciones M2M de la tabla
 # UserProfile. Se ejecuta si se carga un usuario relacionado a ciertos horarios.
