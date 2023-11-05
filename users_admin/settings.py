@@ -47,18 +47,7 @@ INSTALLED_APPS = [
     'celery',
 ]
 
-CELERY_BEAT_SCHEDULE = {
-      'add-every-30-seconds': {
-        'task': 'user_profile_api.tasks.add',
-        'schedule': crontab(hour=20, minute=30, day_of_week=4),
-        'args': (2, 2),
-        'options': {
-            'expires': 15.0,
-        },
-    },
-}
-
-CELERY_ALWAYS_EAGER = True
+CELERY_ALWAYS_EAGER = False
 # Celery Configuration Options
 CELERY_TIMEZONE = "America/Argentina/Buenos_Aires"
 CELERY_TASK_TRACK_STARTED = True
@@ -221,6 +210,7 @@ GATEWAY_USER = 'admin'
 GATEWAY_PASSWORD = utils.get_secret('GATEWAY_PASSWORD')
 DEVICE_UUID = 'D76C6D74-4B20-4BB1-8C4C-B51244DF3026'
 GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
+GATEWAY_ONE_CAMERA = utils.get_secret('GATEWAY_ONE_CAMERA')
 
 BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
 

@@ -14,7 +14,7 @@ import requests
 from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
-from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_IP2, GATEWAY_IP, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_CAMERAS
+from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_IP2, GATEWAY_IP, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_ONE_CAMERA, GATEWAY_CAMERAS
 from user_profile_api.urls_services import (
     URL_STREAM_101,
     URL_OPEN_DOOR_1,
@@ -53,8 +53,11 @@ def video(request):
     link += '&'.join(src_params)
     link += '&mode=webrtc'
 
+    link2 = GATEWAY_ONE_CAMERA
+
     context = {
         'link': link,
+        'link2': link2,
         'devices': devices
     }
 

@@ -4,7 +4,25 @@
 <script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
 
 <script>
+
 $(document).ready(function() {
+
+  $('#select-device').change(function() {
+    var selectedDevice = $(this).val(); 
+    
+    var links = {
+      {% for device in devices %}
+      '{{ device }}': '{{ link2 }}{{ device }}&media=video+audio+microphone',
+      {% endfor %}
+    };
+
+    if (links[selectedDevice]) {
+      window.location.href = links[selectedDevice];
+    } else {
+      console.log('No hay enlace asociado para el dispositivo seleccionado.');
+    }
+  });
+
   $('#my-form button').click(function(event) {
     event.preventDefault();
     
@@ -82,6 +100,15 @@ $(document).ready(function() {
   </head>
   <body>
     <div id="container">
+      <div id="selection-container">
+        <label for="select-device">Selecciona un dispositivo:</label>
+        <select id="select-device">
+          <option value="">Ninguno</option> 
+          {% for device in devices %}
+            <option value="{{ device }}">{{ device }}</option>
+          {% endfor %}
+        </select>
+      </div>
         <div id="video-container">
             <iframe src=" {{ link }}" width="100%" height="100%" frameborder="0"></iframe>
         </div>
