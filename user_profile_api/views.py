@@ -23,6 +23,7 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_DOOR_1,
     URL_DOOR_LOCKTYPE,
+    URL_FINGERPRINTING,
 )
 import datetime
 import json, base64
@@ -32,6 +33,7 @@ from .models import SubjectSchedule, Device
 from django.db.models import F
 import itertools
 import subprocess
+from django.contrib import messages
 
 def check_admin(user):
    return user.is_superuser
@@ -219,6 +221,35 @@ def get_users(request, device):
     response = requests.post(full_url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
     users = response.json()
     return JsonResponse({'users': users['UserInfoSearch']['UserInfo']})
+
+
+class GetFingerprint(TemplateView):
+    template_name = 'admin/submit_line.html'
+
+    def post(self, request, *args, **kwargs):
+        ip = request.POST.get('dispositivos-lectores')
+        base_url = "http://" + ip + ":85"
+        record_url = f"{URL_FINGERPRINTING}?format=xml"
+        full_url = f"{base_url}{record_url}"
+        payload = "<CaptureFingerPrintCond><fingerNo>1</fingerNo></CaptureFingerPrintCond>"
+        headers = {
+            'Content-Type': 'application/xml'
+        }
+        
+        print(full_url)
+        response = requests.post(full_url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+
+        root = ET.fromstring(response.text)
+        finger_data = root.find('.//{http://www.isapi.org/ver20/XMLSchema}fingerData').text
+
+
+        print(response.text)
+ 
+
+        return JsonResponse({'msg': finger_data})
+
+
 
 
 class GetEventsView(TemplateView):

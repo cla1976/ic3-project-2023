@@ -1,7 +1,8 @@
 {% load i18n admin_urls jazzmin %}
 {% get_jazzmin_ui_tweaks as jazzmin_ui %}
-
+{% load static %}
 {% block submit-row %}
+
 <div>
     {% if show_save %}
         <div class="form-group">
@@ -29,14 +30,101 @@
             <input type="submit" class="btn {{ jazzmin_ui.button_classes.info }} form-control" value="{% if can_change %}{% trans 'Save and continue editing' %}{% else %}{% trans 'Save and view' %}{% endif %}" name="_continue">
         </div>
     {% endif %}
+    {% if custom_button %}
+
+    <div class="form-group">
+        <button type="submit" id="print-button" class="btn {{ jazzmin_ui.button_classes.primary }} form-control" data-value="your_device_value">
+            {% translate 'Escanear huella digital' %}
+        </button>
+    <div class="form-group">
+    {% endif %}
+    <div class="form-group">
+        <label for="{{ adminform.form.user_device_id.id_for_label }}">Dispositivo a leer huella:</label>
+        <select name="dispositivos-lectores" id="dispositivos-lectores">
+            {% for value, label in adminform.form.user_device_id.field.choices %}
+                <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
     {% if show_close %}
         <div class="form-group">
             <a href="{% url opts|admin_urlname:'changelist' %}" class="btn {{ jazzmin_ui.button_classes.danger }} form-control">{% trans 'Close' %}</a>
         </div>
     {% endif %}
 
+    <style>
+        #messages-list {
+            height: 200px;
+            overflow: hidden;
+            resize: none; 
+            width: 100%; 
+        }
+    </style>
+
+    <div class="form-group">
+        <textarea id="messages-list" name="messages-list" class="form-control" readonly></textarea>
+        <button id="copy-button" class="btn {{ jazzmin_ui.button_classes.info }} form-control">Copiar</button>
+    </div>
+
     {% block extra-actions %}{% endblock %}
 
 </div>
 {% endblock %}
 
+
+<script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
+
+<script>
+
+function fade_alerts() {
+    alerts = document.getElementsByClassName("alert msg");
+        var i = alerts.length;
+        for (let elem of alerts) {
+            i--;
+            time = 3250+(1000*i);
+            setTimeout(function() {
+                $(elem).fadeOut("slow");
+            }, time);
+        }
+}
+
+    $(document).ready(function() {
+        $('#print-button').click(function(event) {
+            event.preventDefault(); 
+                
+            var device = $('#dispositivos-lectores').val();
+            var url = 'get_fingerprint/';
+            var csrf_token = $('input[name="csrfmiddlewaretoken"]').val();
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: {
+                    'dispositivos-lectores': device,
+                    'csrfmiddlewaretoken': csrf_token
+                },
+                success: function(data) {
+                    // Mostrar la respuesta en messages-list
+                    $('#messages-list').val(data.msg);
+                    fade_alerts();
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);  
+                }
+            });
+        });
+    });
+
+        document.getElementById("copy-button").addEventListener("click", function() {
+            var textarea = document.getElementById("messages-list");
+            textarea.select();
+
+            try {
+                event.preventDefault(); 
+                document.execCommand("copy");
+            } catch (err) {
+                console.error("No se pudo copiar al portapapeles: ", err);
+            }
+        });
+</script>

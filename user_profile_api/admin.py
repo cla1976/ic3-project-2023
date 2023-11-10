@@ -8,11 +8,14 @@ from django.core.files.base import ContentFile
 import os
 from django import forms
 from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
-
+from django.http import JsonResponse
+from django.http import HttpResponse
+from users_admin.settings import HASHID_FIELD_SALT
+from django.contrib.auth.hashers import make_password, check_password
 
 @admin.register(UserProfile)
 class ManageUser(admin.ModelAdmin):
-    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'profile_type', 'fileImage')
+    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'profile_type', 'fileImage', 'fingerprint')
     ordering=('user_device_id',)
     search_fields= ('user_device_id', 'dni', 'email', 'first_name', 'last_name')
     list_per_page=50
@@ -20,15 +23,33 @@ class ManageUser(admin.ModelAdmin):
     exclude = ('planTemplateNo',)
     readonly_fields=('date_created', 'last_updated', 'timeType')
 
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):        
+        context.update({"custom_button": True}) # Here
+        return super().render_change_form(request, context, add, change, form_url, obj)
 
     def save_model(self, request, obj, form, change):
         obj.last_updated = timezone.now()
+        some_salt = HASHID_FIELD_SALT
+        print(some_salt)
+        plano = obj.fingerprint
+        plano = make_password(obj.fingerprint, salt=some_salt, hasher='argon2')
+        print(plano)
+        print(obj.fingerprint)
+        #check_password(plano, obj.fingerprint,preferred='argon2')
+
         super().save_model(request, obj, form, change)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
+        dispositivos = Device.objects.all()
+
+        choices = [(dispositivo.ip, dispositivo.device) for dispositivo in dispositivos]
+
+        form.base_fields['user_device_id'].choices = choices
+
         default_user_device_id = get_default_user_device_id()
         form.base_fields['user_device_id'].initial = default_user_device_id
+        
         return form
 
 

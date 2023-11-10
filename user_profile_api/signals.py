@@ -17,6 +17,8 @@ from user_profile_api.urls_services import (
     URL_RECORD_IMAGE,
     URL_UserRightWeekPlanCfg,
     URL_FaceDataRecord,
+    URL_UPLOAD_FINGERPRINT,
+    URL_CHECK_FINGER_CAPABILITIES,
 )
 from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from requests.auth import HTTPDigestAuth
@@ -690,7 +692,54 @@ def send_image_data(sender, created, instance, **kwargs):
                     else:
                         raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
 
+@receiver(post_save, sender=UserProfile)
+def enviar_huella(sender, instance, **kwargs):
+    if mockeo:
+        return
+    
+    if instance.fingerprint:
+        subject_schedules = instance.subject.all()
+        ips = []
 
+        for subject_schedule in subject_schedules:
+            device = subject_schedule.device
+            if device and device.is_active:  
+                ips.append(device.ip)
+
+        for ip_address in ips:
+            base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+            record_url = f"{URL_CHECK_FINGER_CAPABILITIES}?format=json"
+            full_url = f"{base_url}{record_url}"
+
+            response = requests.get(full_url, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            if response.status_code == 200:
+                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                record_url = f"{URL_UPLOAD_FINGERPRINT}?format=json"
+                full_url = f"{base_url}{record_url}"
+
+                print("Acá es 10")
+                print(instance.fingerprint)
+                #print(plano)
+
+                payload = {
+                    "FingerPrintCfg": {
+                        "employeeNo": str(instance.user_device_id),
+                        "fingerPrintID": 1,
+                        "enableCardReader": [1],
+                        "fingerType": "normalFP",
+                        "fingerData": instance.fingerprint
+                    }
+                }
+
+                response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                if response.status_code == 200:
+                    print("Huella enviada correctamente!")
+                else:
+                    raise Exception("Error enviando huella al dispositivo: {}".format(response.text))
+
+        
 
 # Se activa luego de cargar un horario de materia en la tabla SubjectSchedule.
 # Se sube el JSON al dispositivo respectivo tanto como para el horario de la materia

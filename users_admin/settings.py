@@ -120,6 +120,10 @@ MIDDLEWARE = [
     'user_profile_api.middleware.SpecificPageMiddleware',
 ]
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher"
+]
+
 ROOT_URLCONF = 'users_admin.urls'
 
 TEMPLATES = [
@@ -214,5 +218,8 @@ GATEWAY_ONE_CAMERA = utils.get_secret('GATEWAY_ONE_CAMERA')
 
 BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
 
+HASHID_FIELD_SALT = utils.get_secret('HASHID_FIELD_SALT')
+
 #MEDIA_URL = '/media/'
 #MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
