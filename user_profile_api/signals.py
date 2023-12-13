@@ -18,7 +18,8 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_FaceDataRecord,
 )
-from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
+#from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
+from users_admin.settings import DEVICE_UUID
 from requests.auth import HTTPDigestAuth
 from user_profile_api.models import UserProfile, SubjectSchedule, Device
 from user_profile_api.services import get_default_user_device_id
@@ -40,6 +41,7 @@ mockeo = False
 # y por cada uno de ellos se envía el JSON para localizar al usuario. 
 # Dependiendo del condicional se crea o modifica el usuario con o sin imagen.
 
+#corregida
 @receiver(m2m_changed, sender=UserProfile.subject.through)
 def update_user_subjects(sender, instance, action, pk_set, **kwargs):
     if action == "pre_add" or action == "pre_remove":
@@ -50,6 +52,9 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
         subject_ids = list(pk_set)
         subject_schedules = SubjectSchedule.objects.filter(pk__in=subject_ids)
         device_ips = list(Device.objects.filter(subjectschedule__in=subject_schedules).values_list('ip', flat=True).distinct())
+        door_ports = list(Device.objects.filter(subjectschedule__in=subject_schedules).values_list('door_port', flat=True).distinct())
+        gateway_users = list(Device.objects.filter(subjectschedule__in=subject_schedules).values_list('user', flat=True).distinct())
+        gateway_passwords = list(Device.objects.filter(subjectschedule__in=subject_schedules).values_list('password', flat=True).distinct())
 
         print("subject_ids")
         print(subject_ids)
@@ -59,15 +64,21 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
 
         print("Probando:")
         print(device_ips)
+        print(door_ports)
         print("Cantidad de valores:", len(device_ips))
 
         for i in range(len(device_ips)):
 
 
             print("Iteración:", i)
-            ip_seleccionada = device_ips.pop(0)
+            ip_seleccionada = device_ips[i]
+            GATEWAY_PORT = door_ports[i]
+            GATEWAY_USER = gateway_users[i]
+            GATEWAY_PASSWORD = gateway_passwords[i]
+
             print(ip_seleccionada)
             print(device_ips)
+            print(GATEWAY_PORT)
 
             print("Filtrar con IP")
 
@@ -355,7 +366,7 @@ def send_yaml_config(sender, instance, created, **kwargs):
 
         if str(instance.device) not in contenido:
             contenido['streams'][str(instance.device)] = [
-                f"rtsp://{GATEWAY_USER}:{GATEWAY_PASSWORD}@{instance.ip}:554/ISAPI/Streaming/Channels/101"
+                f"rtsp://{instance.user}:{instance.password}@{instance.ip}:554/ISAPI/Streaming/Channels/101"
      #           f"isapi://admin:password@{instance.ip}:80/"
             ]
 
@@ -364,6 +375,7 @@ def send_yaml_config(sender, instance, created, **kwargs):
 
         print("Contenido del archivo YAML agregado")
 
+#corregida
 @receiver(pre_save, sender=Device)
 def modify_yaml_config(sender, instance, **kwargs):
     if instance.pk:
@@ -385,7 +397,7 @@ def modify_yaml_config(sender, instance, **kwargs):
             del contenido['streams'][str(old_instance.device)]
 
             contenido['streams'][str(instance.device)] = [
-                f"rtsp://{GATEWAY_USER}:{GATEWAY_PASSWORD}@{instance.ip}:554/ISAPI/Streaming/Channels/101"
+                f"rtsp://{instance.user}:{instance.password}@{instance.ip}:554/ISAPI/Streaming/Channels/101"
      #           f"isapi://admin:password@{instance.ip}:80/"
             ]
 
@@ -415,6 +427,7 @@ def delete_yaml_config(sender, instance, **kwargs):
 # Señal que se activa después de agregar de un usuario de la tabla UserProfile.
 # Se envía un JSON dependiendo del condicional si se está creando o modificando.
 
+#corregida, revisar
 @receiver(post_save, sender=UserProfile)
 def send_user_data(sender, instance, created, **kwargs):
     if created:
@@ -425,15 +438,21 @@ def send_user_data(sender, instance, created, **kwargs):
 
             subject_schedules = instance.subject.all()
             ips = []
+            door_ports = []
+            users = []
+            passwords = []
 
             for subject_schedule in subject_schedules:
                 device = subject_schedule.device
                 if device and device.is_active:  
                     ips.append(device.ip)
+                    door_ports.append(device.door_port)
+                    users.append(device.user)
+                    passwords.append(device.password)
 
             print(ips)
 
-            for ip_address in ips:
+            for ip_address, GATEWAY_PORT, GATEWAY_USER, GATEWAY_PASSWORD in zip(ips, door_ports, users, passwords):
 
                 base_url = f'http://{ip_address}:{GATEWAY_PORT}'
                 record_url = f"{URL_RECORD_USER}?format=json"
@@ -504,7 +523,7 @@ def send_user_data(sender, instance, created, **kwargs):
             for i in range(len(device_ips)):
 
                 print("Iteración:", i)
-                ip_seleccionada = device_ips.pop(0)
+                ip_seleccionada = device_ips[i]
                 print(ip_seleccionada)
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
@@ -560,16 +579,22 @@ def send_user_data(sender, instance, created, **kwargs):
 
                 subject_schedules = instance.subject.all()
                 ips = []
+                door_ports = []
+                users = []
+                passwords = []
 
                 for subject_schedule in subject_schedules:
                     device = subject_schedule.device
                     if device and device.is_active:  
                         ips.append(device.ip)
+                        door_ports.append(device.door_port)
+                        users.append(device.user)
+                        passwords.append(device.password)
 
                 print(ips)
 
-                for ip_address in ips:
-                    base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                for ip_address, door_port, user, password in zip(ips, door_ports, users, passwords):
+                    base_url = f'http://{ip_address}:{door_port}'
                     record_url = f"{URL_RECORD_IMAGE}?format=json"
                     full_url = f"{base_url}{record_url}"
 
@@ -585,7 +610,7 @@ def send_user_data(sender, instance, created, **kwargs):
                     print(data)
 
 
-                    response = requests.put(full_url, data=json.dumps(data), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+                    response = requests.put(full_url, data=json.dumps(data), auth=HTTPDigestAuth(user, password))
 
 
                     if response.status_code == 200:
@@ -606,6 +631,7 @@ def send_user_data(sender, instance, created, **kwargs):
 # Señal que se activa después de agregar un usuario en la tabla UserProfile. A diferencia
 # de la señal anterior, se utiliza para sumar la imagen si es que se adjuntó alguna.
 
+#corregida
 @receiver(post_save, sender=UserProfile)
 def send_image_data(sender, created, instance, **kwargs):
         if created:
@@ -615,15 +641,25 @@ def send_image_data(sender, created, instance, **kwargs):
             if instance.fileImage != original_instance.fileImage:
                 subject_schedules = instance.subject.all()
                 ips = []
+                door_ports = []
+                users = []
+                passwords = []
 
                 for subject_schedule in subject_schedules:
                     device = subject_schedule.device
                     if device and device.is_active:  
                         ips.append(device.ip)
+                        door_ports.append(device.door_port)
+                        users.append(device.user)
+                        passwords.append(device.password)
 
                 print(ips)
 
-                for ip_address in ips:
+                for ip_address, door_port, user, password in zip(ips, door_ports, users,passwords):
+                    
+                    GATEWAY_PORT = door_port
+                    GATEWAY_USER = user
+                    GATEWAY_PASSWORD = password
 
                     base_url = f'http://{ip_address}:{GATEWAY_PORT}'
                     record_url = f"{URL_RECORD_IMAGE}?format=json"
@@ -691,12 +727,16 @@ def send_image_data(sender, created, instance, **kwargs):
 # Se sube el JSON al dispositivo respectivo tanto como para el horario de la materia
 # como el plan de horario relacionado.
 
+#corregida
 @receiver(pre_save, sender=SubjectSchedule)
 def enviar_horario(sender, instance, **kwargs):
     if mockeo:
         return
 
     ip = instance.device.ip
+    GATEWAY_PORT = instance.device.door_port
+    GATEWAY_USER = instance.device.user
+    GATEWAY_PASSWORD = instance.device.password
 
     subject_schedules = []
     id_mapping = {}
@@ -788,7 +828,7 @@ def enviar_horario(sender, instance, **kwargs):
 
 
 
-
+#corregida
 @receiver(pre_delete, sender=UserProfile)
 def delete_user_data(sender, instance, **kwargs):
     if mockeo:
@@ -798,15 +838,28 @@ def delete_user_data(sender, instance, **kwargs):
     
     subject_schedules = instance.subject.all()
     ips = []
+    door_ports = []
+    users = []
+    passwords = []
 
     for subject_schedule in subject_schedules:
         device = subject_schedule.device
         if device and device.is_active:  
             ips.append(device.ip)
+            door_ports.append(device.door_port)
+            users.append(device.user)
+            passwords.append(device.password)
 
     print(ips)
+    print(door_ports)
+    print(users)
+    print(passwords)
 
-    for ip_address in ips:
+    for ip_address, door_port, user, password in zip(ips, door_ports, users, passwords):
+        GATEWAY_PORT = door_port
+        GATEWAY_USER = user
+        GATEWAY_PASSWORD = password
+
         base_url = f'http://{ip_address}:{GATEWAY_PORT}'
 
         print(base_url)

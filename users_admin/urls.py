@@ -15,13 +15,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from user_profile_api.views import video, show_doors, show_doors_devices, video_open_door, show_users_devices, show_users, get_users, show_events, show_events_devices, GetEventsView, GetDoorsView, schedule_career, schedule_career_home, schedule_career_home_year
+from user_profile_api.views import massive_door_opening, video, show_doors, show_doors_devices, video_open_door, show_users_devices, show_users, get_users, show_events, show_events_devices, GetEventsView, GetDoorsView, schedule_career, schedule_career_home, schedule_career_home_year
 urlpatterns = [
-    path('video/open_door/<str:device>/', video_open_door, name='video_open_door'),
+    path('video/massive_door_opening/', massive_door_opening, name='massive_door_opening'),
+    #path('video/open_door/<str:device>/', video_open_door, name='video_open_door'),
     path('show_users/<str:device>/get_users/', get_users, name='get_users'),
     path('show_events/<str:device>/get_events/', GetEventsView.as_view(), name='get_events'),
     path('show_doors/<str:device>/show_doors/', GetDoorsView.as_view(), name='get_doors'),
-
+    
     path('horario/<str:career>/<str:year>', schedule_career, name='schedule_career'),
     path('horario/<str:career>/', schedule_career_home_year, name='schedule_career_home_year'),
     path('horario/', schedule_career_home, name='schedule_career_home'),
