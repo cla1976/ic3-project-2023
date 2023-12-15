@@ -15,7 +15,7 @@ from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
 #from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_CAMERAS
-from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS
+from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS, GATEWAY_ONE_CAMERA
 from user_profile_api.urls_services import (
     URL_STREAM_101,
     URL_OPEN_DOOR_1,
@@ -54,8 +54,11 @@ def video(request):
     link += '&'.join(src_params)
     link += '&mode=webrtc'
 
+    link2 = GATEWAY_ONE_CAMERA
+
     context = {
         'link': link,
+        'link2': link2,
         'devices': devices
     }
 
@@ -105,6 +108,7 @@ def massive_door_opening(request):
         headers = {
             'Content-Type': 'application/xml'
         }
+        
 
         if massive_opening:
             response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
@@ -149,7 +153,7 @@ class GetDoorsView(TemplateView):
         }
         response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
         
-        base_url = "http://" + ip + ":" + door_port
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_LOCKTYPE}?format=json"
         url = f"{base_url}{door_url}"
         print(url)
@@ -182,7 +186,7 @@ def show_doors(request, device):
     GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
     GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":" + door_port
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_DOOR_1}"
     full_url = f"{base_url}{record_url}"
 
@@ -202,7 +206,7 @@ def show_doors(request, device):
             enableLeaderCard = root.find('./{http://www.isapi.org/ver20/XMLSchema}enableLeaderCard').text
             leaderCardOpenDuration = root.find('./{http://www.isapi.org/ver20/XMLSchema}leaderCardOpenDuration').text
 
-            base_url = "http://" + ip + ":" + door_port
+            base_url = f"http://{ip}:{door_port}"
             record_url = f"{URL_DOOR_LOCKTYPE}"
             full_url = f"{base_url}{record_url}"
 
@@ -242,7 +246,7 @@ def get_users(request, device):
     GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
     GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":" + door_port
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_SEARCH_USER}?format=json"
     full_url = f"{base_url}{record_url}"
     payload = json.dumps({
@@ -270,7 +274,7 @@ class GetEventsView(TemplateView):
         GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
         GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-        base_url = "http://" + ip + ":" + door_port
+        base_url = f"http://{ip}:{door_port}"
         record_url = f"{URL_AcsEvent}?format=json"
         full_url = f"{base_url}{record_url}"
 

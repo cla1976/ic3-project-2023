@@ -1,5 +1,5 @@
 from django.contrib import admin
-from user_profile_api.models import UserProfile, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule
+from user_profile_api.models import UserTypes, UserProfile, UserProfileStudent, UserProfileMaintenance, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule
 from django.utils import timezone
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -8,17 +8,17 @@ from django.core.files.base import ContentFile
 import os
 from django import forms
 from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
-
+from .forms import DeviceForm
 
 @admin.register(UserProfile)
 class ManageUser(admin.ModelAdmin):
-    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'profile_type', 'fileImage')
-    ordering=('user_device_id',)
-    search_fields= ('user_device_id', 'dni', 'email', 'first_name', 'last_name')
+    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type')
+    ordering=('user_device_id', 'first_name','last_name')
+    search_fields= ('user_device_id', 'dni', 'email', 'phone', 'first_name', 'last_name')
     list_per_page=50
-    filter_vertical = ('subject',)
+    #filter_vertical = ('user_type',)
     exclude = ('planTemplateNo',)
-    readonly_fields=('date_created', 'last_updated', 'timeType')
+    #readonly_fields=('date_created', 'last_updated', 'timeType' 
 
 
     def save_model(self, request, obj, form, change):
@@ -83,10 +83,21 @@ class ManageSubjectSchedule(admin.ModelAdmin):
         form.base_fields['horario_id'].initial = default_horario_id
         return form
 
+class ManageDeviceForm(DeviceForm):
+    class Meta(DeviceForm.Meta):
+        model = Device
+
 @admin.register(Device)
 class ManageDevice(admin.ModelAdmin):
-    list_display=('id', 'device', 'door_port','date_purchased','is_active', 'is_synchronized', 'user', 'password', 'massive_opening')
+    form = ManageDeviceForm
+    list_display=('id', 'device', 'ip', 'door_port', 'user','date_purchased', 'is_active', 'is_synchronized', 'massive_opening')
     ordering=('id',)
     search_fields= ('id','device','date_purchased','user')
     list_per_page=10
   
+@admin.register(UserTypes)
+class ManageUserTypes(admin.ModelAdmin):
+    list_display=('id', 'user_type')
+    ordering=('id',)
+    search_fields= ('id','user_type')
+    list_per_page=10

@@ -21,7 +21,7 @@ from user_profile_api.urls_services import (
 #from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from users_admin.settings import DEVICE_UUID
 from requests.auth import HTTPDigestAuth
-from user_profile_api.models import UserProfile, SubjectSchedule, Device
+from user_profile_api.models import UserProfileStudent, SubjectSchedule, Device
 from user_profile_api.services import get_default_user_device_id
 from django.db.models import F
 from unidecode import unidecode
@@ -42,7 +42,7 @@ mockeo = False
 # Dependiendo del condicional se crea o modifica el usuario con o sin imagen.
 
 #corregida
-@receiver(m2m_changed, sender=UserProfile.subject.through)
+@receiver(m2m_changed, sender=UserProfileStudent.subject.through)
 def update_user_subjects(sender, instance, action, pk_set, **kwargs):
     if action == "pre_add" or action == "pre_remove":
 
@@ -428,7 +428,7 @@ def delete_yaml_config(sender, instance, **kwargs):
 # Se envía un JSON dependiendo del condicional si se está creando o modificando.
 
 #corregida, revisar
-@receiver(post_save, sender=UserProfile)
+@receiver(post_save, sender=UserProfileStudent)
 def send_user_data(sender, instance, created, **kwargs):
     if created:
         if mockeo:
@@ -506,7 +506,7 @@ def send_user_data(sender, instance, created, **kwargs):
             return
 
             
-        previous_instance = UserProfile.objects.get(pk=instance.pk)
+        previous_instance = UserProfileStudent.objects.get(pk=instance.pk)
 
         previous_subject_ids = set(previous_instance.subject.values_list('pk', flat=True))
         current_subject_ids = set(instance.subject.values_list('pk', flat=True))
@@ -632,7 +632,7 @@ def send_user_data(sender, instance, created, **kwargs):
 # de la señal anterior, se utiliza para sumar la imagen si es que se adjuntó alguna.
 
 #corregida
-@receiver(post_save, sender=UserProfile)
+@receiver(post_save, sender=UserProfileStudent)
 def send_image_data(sender, created, instance, **kwargs):
         if created:
             return 
@@ -829,12 +829,12 @@ def enviar_horario(sender, instance, **kwargs):
 
 
 #corregida
-@receiver(pre_delete, sender=UserProfile)
+@receiver(pre_delete, sender=UserProfileStudent)
 def delete_user_data(sender, instance, **kwargs):
     if mockeo:
             return
 
-    pre_delete.disconnect(delete_user_data, sender=UserProfile)
+    pre_delete.disconnect(delete_user_data, sender=UserProfileStudent)
     
     subject_schedules = instance.subject.all()
     ips = []
@@ -889,7 +889,7 @@ def delete_user_data(sender, instance, **kwargs):
             print("Error: can't delete user")
             raise Exception("Failed to delete instance: {}".format(response.text))
 
-        pre_delete.connect(delete_user_data, sender=UserProfile)
+        pre_delete.connect(delete_user_data, sender=UserProfileStudent)
     
 
 
