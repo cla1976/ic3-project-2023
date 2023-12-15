@@ -23,8 +23,11 @@ class ManageUser(admin.ModelAdmin):
     exclude = ('planTemplateNo',)
     readonly_fields=('date_created', 'last_updated', 'timeType')
 
-    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):        
-        context.update({"custom_button": True}) # Here
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        if 'userprofile/add/' in request.path:
+            context.update({"custom_button": True, "show_copy_button": True})
+        else:
+            context.update({"custom_button": False, "show_copy_button": False})
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def save_model(self, request, obj, form, change):

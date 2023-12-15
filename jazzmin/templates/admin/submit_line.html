@@ -38,6 +38,8 @@
         </button>
     <div class="form-group">
     {% endif %}
+    
+    {% if show_copy_button %}
     <div class="form-group">
         <label for="{{ adminform.form.user_device_id.id_for_label }}">Dispositivo a leer huella:</label>
         <select name="dispositivos-lectores" id="dispositivos-lectores">
@@ -46,6 +48,7 @@
             {% endfor %}
         </select>
     </div>
+    {% endif %}
     
     {% if show_close %}
         <div class="form-group">
@@ -62,10 +65,13 @@
         }
     </style>
 
-    <div class="form-group">
-        <textarea id="messages-list" name="messages-list" class="form-control" readonly></textarea>
-        <button id="copy-button" class="btn {{ jazzmin_ui.button_classes.info }} form-control">Copiar</button>
-    </div>
+    {% if show_copy_button %}
+        <div class="form-group">
+            <textarea id="messages-list" name="messages-list" class="form-control" readonly></textarea>
+            <button id="copy-button" class="btn {{ jazzmin_ui.button_classes.info }} form-control">Copiar</button>
+        </div>
+    {% endif %}
+
 
     {% block extra-actions %}{% endblock %}
 

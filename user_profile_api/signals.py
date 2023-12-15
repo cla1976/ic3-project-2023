@@ -194,6 +194,38 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                             else:
                                 raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
 
+                        if instance.fingerprint:
+                            base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                            record_url = f"{URL_CHECK_FINGER_CAPABILITIES}?format=json"
+                            full_url = f"{base_url}{record_url}"
+
+                            print("Acá se crea con fingerprint")
+
+                            response = requests.get(full_url, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                            if response.status_code == 200:
+                                print(instance.fingerprint)
+                                base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                                record_url = f"{URL_UPLOAD_FINGERPRINT}?format=json"
+                                full_url = f"{base_url}{record_url}"
+
+                                payload = {
+                                    "FingerPrintCfg": {
+                                        "employeeNo": str(instance.user_device_id),
+                                        "fingerPrintID": 1,
+                                        "enableCardReader": [1],
+                                        "fingerType": "normalFP",
+                                        "fingerData": instance.fingerprint
+                                    }
+                                }
+
+                                response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                                if response.status_code == 200:
+                                    print("Huella creada y enviada correctamente!")
+                                else:
+                                    raise Exception("Error enviando huella al dispositivo: {}".format(response.text))
+
                 else:
                     raise Exception("Error enviando el usuario al dispositivo: {}".format(response.text))
 
@@ -693,9 +725,12 @@ def send_image_data(sender, created, instance, **kwargs):
                         raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
 
 @receiver(post_save, sender=UserProfile)
-def enviar_huella(sender, instance, **kwargs):
+def enviar_huella(sender, created, instance, **kwargs):
     if mockeo:
         return
+
+    if created:
+        return 
     
     if instance.fingerprint:
         subject_schedules = instance.subject.all()
