@@ -9,10 +9,6 @@ import os
 from django import forms
 from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
 from .forms import DeviceForm
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/feature/extranjeros
 
 @admin.register(UserProfile)
 class ManageUser(admin.ModelAdmin):
@@ -94,7 +90,6 @@ class ManageDeviceForm(DeviceForm):
 @admin.register(Device)
 class ManageDevice(admin.ModelAdmin):
     form = ManageDeviceForm
-<<<<<<< HEAD
     list_display=('id', 'device', 'ip', 'door_port', 'user','date_purchased', 'is_active', 'is_synchronized', 'massive_opening')
     ordering=('id',)
     search_fields= ('id','device','date_purchased','user')
@@ -106,23 +101,3 @@ class ManageUserTypes(admin.ModelAdmin):
     ordering=('id',)
     search_fields= ('id','user_type')
     list_per_page=10
-=======
-    list_display=('id', 'device', 'door_port','date_purchased','is_active', 'is_synchronized', 'user', 'massive_opening')
-    ordering=('id',)
-    search_fields= ('id','device','date_purchased','user')
-    list_per_page=10
-
-'''
-@admin.register(Device)
-class ManageDevice(admin.ModelAdmin):
-    list_display=('id', 'device', 'door_port','date_purchased','is_active', 'is_synchronized', 'user', 'massive_opening')
-    ordering=('id',)
-    search_fields= ('id','device','date_purchased','user')
-    list_per_page=10
-    class Meta:
-        model = Device
-        extra_kwargs = {
-            "password":{"write_only":True, "style":{"input_type":"password"}}    
-        }
-'''
->>>>>>> origin/feature/extranjeros
