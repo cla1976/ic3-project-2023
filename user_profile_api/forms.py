@@ -6,5 +6,4 @@ class DeviceForm(forms.ModelForm):
 
     class Meta:
         model = Device
-        fields = ['device', 'ip', 'door_port', 'date_purchased', 'is_active', 'is_synchronized', 
-                  'password', 'user', 'massive_opening']  # incluye tus otros campos aquí
+        fields = ['device', 'ip', 'door_port', 'date_purchased', 'is_active', 'is_synchronized', 'user', 'password', 'massive_opening']

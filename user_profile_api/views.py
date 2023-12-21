@@ -96,7 +96,7 @@ def video_open_door(request, device):
     GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
     GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":" + door_port
+    base_url = f"http://{ip}:{door_port}"
     door_url = f"{URL_OPEN_DOOR_1}?format=xml"
     url = f"{base_url}{door_url}"
     print(url)
@@ -160,7 +160,7 @@ class GetDoorsView(TemplateView):
         GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
         GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-        base_url = "http://" + ip + ":" + door_port
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_1}?format=xml"
         url = f"{base_url}{door_url}"
         print(url)
@@ -256,7 +256,6 @@ def show_doors(request, device):
 
     except requests.exceptions.RequestException as e:
         print(f'Error de conexión: {e}')
-
 
 
 def get_users(request, device):
