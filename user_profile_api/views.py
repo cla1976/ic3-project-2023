@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from django.views import View
 from django.http import StreamingHttpResponse
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotFound
 from django.views.decorators.http import condition
 import cv2
 import imutils
@@ -63,6 +63,25 @@ def video(request):
     }
 
     return render(request, "custom/video/video.html", context)
+
+@user_passes_test(check_admin)
+def video_individual(request, device):
+    # Asegúrate de que el dispositivo existe
+    try:
+        device_obj = Device.objects.get(device=device)
+    except Device.DoesNotExist:
+        return HttpResponseNotFound("Dispositivo no encontrado")
+
+    link = GATEWAY_ONE_CAMERA
+    link += f'src={device_obj.device}&mode=webrtc'
+
+    context = {
+        'link': link,
+        'device': device_obj.device
+    }
+
+    return render(request, "custom/video/video-individual.html", context)
+
 
 # Vista de la funcionalidad para abrir la puerta asignada a un dispositivo. 
 # Se activa con el pulsado de botón en una vista con plantilla anterior y
