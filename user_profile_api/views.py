@@ -74,7 +74,7 @@ def video_open_door(request, device):
     GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
     GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":" + door_port
+    base_url = f"http://{ip}:{door_port}"
     door_url = f"{URL_OPEN_DOOR_1}?format=xml"
     url = f"{base_url}{door_url}"
     print(url)
@@ -137,7 +137,7 @@ class GetDoorsView(TemplateView):
         GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
         GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-        base_url = "http://" + ip + ":" + door_port
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_1}?format=xml"
         url = f"{base_url}{door_url}"
         print(url)
@@ -149,7 +149,7 @@ class GetDoorsView(TemplateView):
         }
         response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
         
-        base_url = "http://" + ip + ":" + door_port
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_LOCKTYPE}?format=json"
         url = f"{base_url}{door_url}"
         print(url)
@@ -182,7 +182,7 @@ def show_doors(request, device):
     GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
     GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":" + door_port
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_DOOR_1}"
     full_url = f"{base_url}{record_url}"
 
@@ -202,7 +202,7 @@ def show_doors(request, device):
             enableLeaderCard = root.find('./{http://www.isapi.org/ver20/XMLSchema}enableLeaderCard').text
             leaderCardOpenDuration = root.find('./{http://www.isapi.org/ver20/XMLSchema}leaderCardOpenDuration').text
 
-            base_url = "http://" + ip + ":" + door_port
+            base_url = f"http://{ip}:{door_port}"
             record_url = f"{URL_DOOR_LOCKTYPE}"
             full_url = f"{base_url}{record_url}"
 
@@ -235,14 +235,13 @@ def show_doors(request, device):
         print(f'Error de conexión: {e}')
 
 
-
 def get_users(request, device):
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
     door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
     GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
     GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":" + door_port
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_SEARCH_USER}?format=json"
     full_url = f"{base_url}{record_url}"
     payload = json.dumps({
@@ -270,7 +269,7 @@ class GetEventsView(TemplateView):
         GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
         GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-        base_url = "http://" + ip + ":" + door_port
+        base_url = f"http://{ip}:{door_port}"
         record_url = f"{URL_AcsEvent}?format=json"
         full_url = f"{base_url}{record_url}"
 

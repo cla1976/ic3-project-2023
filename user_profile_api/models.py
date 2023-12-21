@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from multiselectfield import MultiSelectField
+from django.contrib.auth.hashers import make_password
 
 DEVICES = (('1', 'Device 1'),
            ('2', 'Device 2'),
@@ -65,10 +66,12 @@ class Device(models.Model):
     is_active = models.BooleanField(default=False, null=True)
     is_synchronized = models.BooleanField(default=True, null=True)
     user = models.CharField(max_length=50, null=True)
-    password = models.CharField(max_length=50, null=True)
+    password = models.CharField(max_length=128, null=True)
     massive_opening = models.BooleanField(default=False, null=True)
 
-
+    """def save(self, *args, **kwargs):
+        self.password = make_password(self.password)
+        super().save(*args, **kwargs)"""
 
     def __str__(self):
         text = "{0}"
@@ -122,8 +125,6 @@ class SubjectSchedule(models.Model):
          ('Saturday', 'Sábado'),
          ('Sunday', 'Domingo'))
 
-
-
     horario_id = models.IntegerField(blank=True, verbose_name="ID de horario", null=True)
     begin_time = models.TimeField(null=True)
     end_time = models.TimeField(null=True)
@@ -139,6 +140,18 @@ class SubjectSchedule(models.Model):
         verbose_name_plural = "Horario de materias"
         unique_together = ('horario_id', 'device')
 
+class UserTypes(models.Model):
+    user_type = models.CharField(verbose_name="Tipo de usuario", max_length=100, null=False)
+
+    def __str__(self):
+        text = "{1}"
+        return text.format(self.id, self.user_type)
+    
+    class Meta:
+        verbose_name = "Tipos de usuarios"
+        verbose_name_plural = "Tipos de usuarios"
+
+
 class UserProfile(models.Model):
     user_device_id = models.IntegerField(unique=True, blank=True, verbose_name="ID de usuario", null=True)
     first_name = models.CharField(max_length=100, null=True, verbose_name="Nombre")
@@ -146,7 +159,23 @@ class UserProfile(models.Model):
     dni = models.CharField(max_length=100, unique=True, null=True, verbose_name="DNI")
     email = models.EmailField(max_length=255, unique=True, verbose_name="Correo electrónico", null=True)
     gender = models.CharField(max_length=10, choices=GENDER, verbose_name="Género", null=True)
-    subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir", null=True)
+    address = models.CharField(max_length=100, null=True, verbose_name="Dirección")
+    phone = models.CharField(max_length=100, null=True, blank=True, verbose_name="Teléfono")
+    user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, verbose_name="Tipo de usuario", null=True)
+
+    def __str__(self):
+        text = "{0} {1} ({2} {3})"
+
+        return text.format(self.first_name, self.last_name, self.dni, self.user_device_id)
+
+    class Meta:
+        verbose_name = "Usuario"
+        verbose_name_plural = "Usuarios"
+
+    USERNAME_FIELD = 'email'
+
+class UserProfileStudent(UserProfile):
+    subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir", blank=True)
     userVerifyMode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación", null=True)
     doorRight = models.CharField(max_length=100, verbose_name="Puerta proxima", null=True)
     doorNo = models.CharField(max_length=100, verbose_name="Número de puerta", null=True)
@@ -155,8 +184,6 @@ class UserProfile(models.Model):
     profile_type = models.CharField(max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario", null=True)
     date_created = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha creación", null=True)
     last_updated = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha actualización", null=True)
-    address = models.CharField(max_length=100, null=True, verbose_name="Dirección")
-    phone = models.CharField(max_length=100, null=True, blank=True, verbose_name="Teléfono")
     beginTime = models.DateTimeField(editable=True, verbose_name="Fecha inicio de habilitación", null=True)
     endTime = models.DateTimeField(editable=True, verbose_name="Fecha final de habilitación", null=True)
     fileImage = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen", null=True)
@@ -170,11 +197,33 @@ class UserProfile(models.Model):
         return text.format(self.first_name, self.last_name, self.dni, self.user_device_id)
 
     class Meta:
-        verbose_name = "Usuario"
-        verbose_name_plural = "Usuarios"
+        verbose_name = "Alumno"
+        verbose_name_plural = "Alumnos"
 
     USERNAME_FIELD = 'email'
 
+class UserProfileMaintenance(UserProfile):
+    sunday = models.BooleanField(default=True, verbose_name="Domingo", null=True)
+    sundayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    sundayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
+    monday = models.BooleanField(default=True, verbose_name="Lunes", null=True)
+    mondayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    mondayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
+    tuesday = models.BooleanField(default=True, verbose_name="Martes", null=True)
+    tuesdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    tuesdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
+    wednesday = models.BooleanField(default=True, verbose_name="Miércoles", null=True)
+    wednesdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    wednesdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
+    thursday = models.BooleanField(default=True, verbose_name="Jueves", null=True)
+    thursdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    thursdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
+    friday = models.BooleanField(default=True, verbose_name="Viernes", null=True)
+    fridayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    fridayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
+    saturday = models.BooleanField(default=True, verbose_name="Sábado", null=True)
+    saturdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    saturdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
 
 class Room(models.Model):
     room = models.CharField(max_length=100, null=True)
