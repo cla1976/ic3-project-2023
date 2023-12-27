@@ -14,7 +14,6 @@ import requests
 from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
-#from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_CAMERAS
 from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS, GATEWAY_ONE_CAMERA
 from user_profile_api.urls_services import (
     URL_STREAM_101,
@@ -54,6 +53,8 @@ def video(request):
     link += '&'.join(src_params)
     link += '&mode=webrtc'
 
+    print(link)
+
     link2 = GATEWAY_ONE_CAMERA
 
     context = {
@@ -64,16 +65,19 @@ def video(request):
 
     return render(request, "custom/video/video.html", context)
 
+# Vista de los dispositivos individuales
+
 @user_passes_test(check_admin)
 def video_individual(request, device):
-    # Asegúrate de que el dispositivo existe
     try:
         device_obj = Device.objects.get(device=device)
     except Device.DoesNotExist:
         return HttpResponseNotFound("Dispositivo no encontrado")
 
     link = GATEWAY_ONE_CAMERA
-    link += f'src={device_obj.device}&mode=webrtc'
+    link += f'{device_obj.device}&mode=webrtc'
+
+    print(link)
 
     context = {
         'link': link,
@@ -105,7 +109,7 @@ def video_open_door(request, device):
         'Content-Type': 'application/xml'
     }
     response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
-    return HttpResponse('')
+    return HttpResponse('La puerta ha sido abierta')
 
 # Vista de la funcionalidad para realizar la apertura masiva de las puertas habilitadas.
 

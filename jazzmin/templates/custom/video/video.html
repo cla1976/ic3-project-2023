@@ -4,11 +4,11 @@
 <script>
   $(document).ready(function () {
     $('#select-device').change(function() {
-      var selectedDevice = $(this).val(); 
+      let selectedDevice = $(this).val(); 
       
-      var links = {
+      let links = {
         {% for device in devices %}
-        '{{ device }}': '{{ link2 }}{{ device }}&media=video+audio+microphone',
+        '{{ device }}': 'individual/' + '{{device}}' + '/',
         {% endfor %}
       };
 
@@ -26,7 +26,7 @@
   $(document).ready(function () {
     $("#openAllButton").click(function (event) {
         event.preventDefault();
-        var url = "/video/massive_door_opening/";
+        let url = "/video/massive_door_opening/";
         $.ajax({
           url: url,
           type: "GET",
@@ -108,29 +108,8 @@
         <div id="video-container">
             <iframe src=" {{ link }}" width="100%" height="100%" frameborder="0"></iframe>
         </div>
-            <!--<div id="form-container">
-              <form id="my-form">
-                {% for device in devices %}
-                  {% csrf_token %}
-                  <button type="submit" data-value="{{ device }}">Puerta {{ device }}</button>
-                {% endfor %}
-              </form>
-            </div> -->
-      <!--<div id="video-container">
-        <iframe
-          src="{{ link }}"
-          width="100%"
-          height="100%"
-          frameborder="0"
-        ></iframe>
-      </div> -->
       <div id="form-container">
         <form id="my-form">
-          <!--{% for device in devices %} {% csrf_token %}
-          <button type="submit" data-value="{{ device }}">
-            Puerta {{ device }}
-          </button>
-          {% endfor %}-->
           <button id="openAllButton" type="button">Abrir Todas</button>
         </form>
       </div>

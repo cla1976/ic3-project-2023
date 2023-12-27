@@ -2,40 +2,49 @@
 <script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
 
 <script>
-  $(document).ready(function () {
-    var links = {
-      {% for device in devices %}
-      '{{ device }}': '{{ link2 }}{{ device }}&media=video+audio+microphone',
-      {% endfor %}
-    };
+  // Botón para abrir una puerta
+  $("#my-form button").click(function (event) {
+    event.preventDefault();
 
-    // Redirige a la vista correspondiente al cargar la página
-    var selectedDevice = '{{ devices[0] }}'; // Selecciona el primer dispositivo por defecto
-    if (links[selectedDevice]) {
-      window.location.href = links[selectedDevice];
-    } else {
-      console.log('No hay enlace asociado para el dispositivo seleccionado.');
-    }
+    let device = $(this).attr("data-value");
+    let url = "/video/open_door/" + device;
+
+    $.ajax({
+      url: url,
+      type: "POST",
+      data: $("#my-form").serialize(),
+      success: function (data) {
+        console.log(data);
+      },
+    });
   });
 </script>
 
 <script>
-  // Botón nuevo para abrir todas las puertas
   $(document).ready(function () {
-    $("#openAllButton").click(function (event) {
-        event.preventDefault();
-        var url = "/video/massive_door_opening/";
+    $('#openDoorButton').click(function() {
+      let url = window.location.href;
+      let device = url.split('/').slice(-2, -1)[0];
+
+      if (device) {
         $.ajax({
-          url: url,
-          type: "GET",
-          success: function (data) {
-            console.log(data);
-            // Aquí puedes manejar la respuesta de la función si es necesario
+          url: '/video/open_door/' + device + '/',
+          type: 'GET',
+          success: function(response) {
+            console.log(response);
           },
+          error: function(error) {
+            console.log(error);
+          }
         });
-      });
+      } else {
+        console.log('No hay dispositivo seleccionado.');
+      }
+    });
   });
 </script>
+
+
 
 <html>
   <head>
@@ -99,7 +108,7 @@
       </div>
       <div id="form-container">
         <form id="my-form">
-          <button id="openAllButton" type="button">Abrir Todas</button>
+          <button id="openDoorButton" type="button">Abrir Puerta</button>
         </form>
       </div>
     </div>
