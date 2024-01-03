@@ -1,7 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from multiselectfield import MultiSelectField
-from django.contrib.auth.hashers import make_password
+from django.db.models import Max
+from django_cryptography.fields import encrypt
 
 DEVICES = (('1', 'Device 1'),
            ('2', 'Device 2'),
@@ -66,17 +67,19 @@ class Device(models.Model):
     is_active = models.BooleanField(default=False, null=True)
     is_synchronized = models.BooleanField(default=True, null=True)
     user = models.CharField(max_length=50, null=True)
-    password = models.CharField(max_length=128, null=True)
+    password = encrypt(models.CharField(max_length=128, null=True))
+    #password = models.CharField(max_length=128, null=True)
     massive_opening = models.BooleanField(default=False, null=True)
+   
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
 
-    """def save(self, *args, **kwargs):
-        self.password = make_password(self.password)
-        super().save(*args, **kwargs)"""
+    def get_password(self):
+        return self.password
 
     def __str__(self):
         text = "{0}"
         return text.format(self.device)
-
 
     class Meta:
         verbose_name = "Dispositivo"
@@ -153,6 +156,7 @@ class UserTypes(models.Model):
 
 
 class UserProfile(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, null=True, verbose_name="Dispositivo")
     user_device_id = models.IntegerField(unique=True, blank=True, verbose_name="ID de usuario", null=True)
     first_name = models.CharField(max_length=100, null=True, verbose_name="Nombre")
     last_name = models.CharField(max_length=100, null=True, verbose_name="Apellido")
@@ -161,7 +165,22 @@ class UserProfile(models.Model):
     gender = models.CharField(max_length=10, choices=GENDER, verbose_name="Género", null=True)
     address = models.CharField(max_length=100, null=True, verbose_name="Dirección")
     phone = models.CharField(max_length=100, null=True, blank=True, verbose_name="Teléfono")
-    user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, verbose_name="Tipo de usuario", null=True)
+    is_active = models.BooleanField(default=False, verbose_name="Fecha de habilitación?", null=True)
+    begin_time = models.DateTimeField(editable=True, verbose_name="Fecha inicio de habilitación", null=True)
+    end_time = models.DateTimeField(editable=True, verbose_name="Fecha final de habilitación", null=True)
+    is_staff = models.BooleanField(default=False, verbose_name="¿Usuario administrador?", null=True)
+    profile_type = models.CharField(default='normal', max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario del dipositivo", null=True)
+    file_image = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen", null=True)
+    user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, verbose_name="Tipo de usuario dentro de la institución", null=True)
+
+    """def save(self, *args, **kwargs):
+        if self.pk is None:
+            max_id = UserProfile.objects.aggregate(Max('user_device_id'))['user_device_id__max']
+            if max_id is None:
+                self.user_device_id = 1
+            else:
+                self.user_device_id = max_id + 1
+        super().save(*args, **kwargs)"""
 
     def __str__(self):
         text = "{0} {1} ({2} {3})"
@@ -176,21 +195,14 @@ class UserProfile(models.Model):
 
 class UserProfileStudent(UserProfile):
     subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir", blank=True)
-    userVerifyMode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación", null=True)
-    doorRight = models.CharField(max_length=100, verbose_name="Puerta proxima", null=True)
+    user_verify_mode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación", null=True)
+    door_right = models.CharField(max_length=100, verbose_name="Puerta proxima", null=True)
     doorNo = models.CharField(max_length=100, verbose_name="Número de puerta", null=True)
-    is_active = models.BooleanField(default=True, verbose_name="¿Usuario habilitado?", null=True)
-    is_staff = models.BooleanField(default=False, verbose_name="¿Usuario administrador?", null=True)
-    profile_type = models.CharField(max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario", null=True)
     date_created = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha creación", null=True)
     last_updated = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha actualización", null=True)
-    beginTime = models.DateTimeField(editable=True, verbose_name="Fecha inicio de habilitación", null=True)
-    endTime = models.DateTimeField(editable=True, verbose_name="Fecha final de habilitación", null=True)
-    fileImage = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen", null=True)
     card = models.CharField(max_length=20, blank=True, verbose_name="Tarjeta", null=True)
-    cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta", null=True)
-    timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora", null=True)
-    
+    card_type = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta", null=True)
+    time_type = models.CharField(max_length=10, default='local', verbose_name="Modo de hora", null=True)
 
     def __str__(self):
         text = "{0} {1} ({2} {3})"
