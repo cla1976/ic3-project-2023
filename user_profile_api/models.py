@@ -68,7 +68,6 @@ class Device(models.Model):
     is_synchronized = models.BooleanField(default=True, null=True)
     user = models.CharField(max_length=50, null=True)
     password = encrypt(models.CharField(max_length=128, null=True))
-    #password = models.CharField(max_length=128, null=True)
     massive_opening = models.BooleanField(default=False, null=True)
    
     def save(self, *args, **kwargs):
@@ -157,7 +156,7 @@ class UserTypes(models.Model):
 
 class UserProfile(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, null=True, verbose_name="Dispositivo")
-    user_device_id = models.IntegerField(unique=True, blank=True, verbose_name="ID de usuario", null=True)
+    user_device_id = models.PositiveIntegerField(unique=True, blank=True, verbose_name="ID de usuario", null=True)
     first_name = models.CharField(max_length=100, null=True, verbose_name="Nombre")
     last_name = models.CharField(max_length=100, null=True, verbose_name="Apellido")
     dni = models.CharField(max_length=100, unique=True, null=True, verbose_name="DNI")
@@ -165,26 +164,16 @@ class UserProfile(models.Model):
     gender = models.CharField(max_length=10, choices=GENDER, verbose_name="Género", null=True)
     address = models.CharField(max_length=100, null=True, verbose_name="Dirección")
     phone = models.CharField(max_length=100, null=True, blank=True, verbose_name="Teléfono")
-    is_active = models.BooleanField(default=False, verbose_name="Fecha de habilitación?", null=True)
+    is_active = models.BooleanField(default=False, verbose_name="¿Fecha de habilitación?", null=True)
     begin_time = models.DateTimeField(editable=True, verbose_name="Fecha inicio de habilitación", null=True)
     end_time = models.DateTimeField(editable=True, verbose_name="Fecha final de habilitación", null=True)
     is_staff = models.BooleanField(default=False, verbose_name="¿Usuario administrador?", null=True)
     profile_type = models.CharField(default='normal', max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario del dipositivo", null=True)
-    file_image = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen", null=True)
+    #file_image = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen", null=True)
     user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, verbose_name="Tipo de usuario dentro de la institución", null=True)
-
-    """def save(self, *args, **kwargs):
-        if self.pk is None:
-            max_id = UserProfile.objects.aggregate(Max('user_device_id'))['user_device_id__max']
-            if max_id is None:
-                self.user_device_id = 1
-            else:
-                self.user_device_id = max_id + 1
-        super().save(*args, **kwargs)"""
 
     def __str__(self):
         text = "{0} {1} ({2} {3})"
-
         return text.format(self.first_name, self.last_name, self.dni, self.user_device_id)
 
     class Meta:
@@ -193,7 +182,16 @@ class UserProfile(models.Model):
 
     USERNAME_FIELD = 'email'
 
-class UserProfileStudent(UserProfile):
+    def save(self, *args, **kwargs):
+        if self.user_device_id is None:
+            max_id = UserProfile.objects.all().aggregate(Max('user_device_id'))['user_device_id__max']
+            if max_id is None:
+                max_id = 0
+            self.user_device_id = max_id + 1
+        super().save(*args, **kwargs)
+
+class UserProfileStudent(models.Model):
+    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
     subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir", blank=True)
     user_verify_mode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación", null=True)
     door_right = models.CharField(max_length=100, verbose_name="Puerta proxima", null=True)
@@ -204,38 +202,38 @@ class UserProfileStudent(UserProfile):
     card_type = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta", null=True)
     time_type = models.CharField(max_length=10, default='local', verbose_name="Modo de hora", null=True)
 
-    def __str__(self):
-        text = "{0} {1} ({2} {3})"
-        return text.format(self.first_name, self.last_name, self.dni, self.user_device_id)
-
     class Meta:
         verbose_name = "Alumno"
         verbose_name_plural = "Alumnos"
 
-    USERNAME_FIELD = 'email'
+class UserProfileMaintenance(models.Model):
+    choices = [(None, '-------'), ('Sí', 'Sí'), ('No', 'No')]
 
-class UserProfileMaintenance(UserProfile):
-    sunday = models.BooleanField(default=True, verbose_name="Domingo", null=True)
-    sundayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
-    sundayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
-    monday = models.BooleanField(default=True, verbose_name="Lunes", null=True)
-    mondayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
-    mondayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
-    tuesday = models.BooleanField(default=True, verbose_name="Martes", null=True)
-    tuesdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
-    tuesdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
-    wednesday = models.BooleanField(default=True, verbose_name="Miércoles", null=True)
-    wednesdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
-    wednesdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
-    thursday = models.BooleanField(default=True, verbose_name="Jueves", null=True)
-    thursdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
-    thursdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
-    friday = models.BooleanField(default=True, verbose_name="Viernes", null=True)
-    fridayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
-    fridayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
-    saturday = models.BooleanField(default=True, verbose_name="Sábado", null=True)
-    saturdayTimeBegin = models.TimeField(null=True, verbose_name="Hora de inicio")
-    saturdayTimeEnd = models.TimeField(null=True, verbose_name="Hora de fin")
+    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
+    sunday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Domingo")
+    sunday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    sunday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    monday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Lunes")
+    monday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    monday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    tuesday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Martes")
+    tuesday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    tuesday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    wednesday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Miércoles")
+    wednesday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    wednesday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    thursday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Jueves")
+    thursday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    thursday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    friday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Viernes")
+    friday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    friday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    saturday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Sábado")
+    saturday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    saturday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+
+    class Meta:
+        verbose_name = "Personal de Mantenimiento"
 
 class Room(models.Model):
     room = models.CharField(max_length=100, null=True)
@@ -249,13 +247,3 @@ class Room(models.Model):
     class Meta:
         verbose_name = "Sala"
         verbose_name_plural = "Salas"
-
-
-
-
-
-
-
-
-
-

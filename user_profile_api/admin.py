@@ -8,15 +8,28 @@ from django.core.files.base import ContentFile
 import os
 from django import forms
 from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
-from .forms import DeviceForm, UserProfileForm
+from .forms import DeviceForm, UserProfileForm, UserProfileStudentForm, UserProfileMaintenanceForm
 from django.conf import settings
 import requests
 from requests.auth import HTTPDigestAuth
 import json
 from user_profile_api.urls_services import (URL_RECORD_USER, URL_DELETE_USER, URL_SEARCH_USER, URL_MODIFY_USER )
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+class UserProfileStudentInline(admin.StackedInline):
+    model = UserProfileStudent
+    form = UserProfileStudentForm
+    extra = 1 
+
+class UserProfileMaintenanceInline(admin.StackedInline):
+    form = UserProfileMaintenanceForm
+    model = UserProfileMaintenance
+    extra = 1
 
 @admin.register(UserProfile)
 class ManageUser(admin.ModelAdmin):
+    inlines = [UserProfileStudentInline, UserProfileMaintenanceInline]
     form = UserProfileForm
     list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type')
     ordering=('user_device_id', 'first_name','last_name')
@@ -52,11 +65,13 @@ class ManageUser(admin.ModelAdmin):
                         "Valid": {
                             "enable": obj.is_active
                         }, 
-                        "localUIRight": obj.is_active
+                        "localUIRight": obj.is_staff
                     }
                 }
                 print(data)
             else:
+                begin_time_str = obj.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if obj.begin_time else None
+                end_time_str = obj.end_time.strftime("%Y-%m-%dT%H:%M:%S") if obj.end_time else None
                 data = {
                 "UserInfo":
                     {
@@ -66,10 +81,10 @@ class ManageUser(admin.ModelAdmin):
                         "gender": obj.gender,
                         "Valid": {
                             "enable": obj.is_active, 
-                            "beginTime": obj.begin_time,
-                            "endTime": obj.end_time,
+                            "beginTime": begin_time_str,
+                            "endTime": end_time_str,
                         }, 
-                        "localUIRight": obj.is_active
+                        "localUIRight": obj.is_staff
                     }
                 }
                 print(data)
@@ -99,11 +114,13 @@ class ManageUser(admin.ModelAdmin):
                         "Valid": {
                             "enable": obj.is_active
                         }, 
-                        "localUIRight": obj.is_active
+                        "localUIRight": obj.is_staff
                     }
                 }
                 print(data)
             else:
+                begin_time_str = obj.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if obj.begin_time else None
+                end_time_str = obj.end_time.strftime("%Y-%m-%dT%H:%M:%S") if obj.end_time else None
                 data = {
                 "UserInfo":
                     {
@@ -113,10 +130,10 @@ class ManageUser(admin.ModelAdmin):
                         "gender": obj.gender,
                         "Valid": {
                             "enable": obj.is_active, 
-                            "beginTime": obj.begin_time,
-                            "endTime": obj.end_time,
+                            "beginTime": begin_time_str,
+                            "endTime": end_time_str,
                         }, 
-                        "localUIRight": obj.is_active
+                        "localUIRight": obj.is_staff
                     }
                 }
                 print(data)
@@ -132,8 +149,9 @@ class ManageUser(admin.ModelAdmin):
         
         super().save_model(request, obj, form, change)
 
-    def delete_model(self, request, obj):
-        device = obj.device
+    @receiver(post_delete, sender=UserProfile)
+    def post_delete_userprofile(sender, instance, **kwargs):
+        device = instance.device
         ip = device.ip
         door_port = device.door_port
         uuid = settings.DEVICE_UUID
@@ -145,10 +163,10 @@ class ManageUser(admin.ModelAdmin):
         print(url)
 
         data = {
-            "UserInfoDetail" : {
+            "UserInfoDetail": {
                 "mode": "byEmployeeNo",
-                "EmployeeNoList" : [{
-                    "employeeNo": str(obj.user_device_id)
+                "EmployeeNoList": [{
+                    "employeeNo": str(instance.user_device_id)
                 }]
             }
         }
@@ -157,17 +175,32 @@ class ManageUser(admin.ModelAdmin):
         response = requests.put(url, data=json.dumps(data), headers=headers, auth=auth)
 
         if response.status_code == 200:
-                print('Usuario eliminado correctamente al dispositivo remoto.')
+            print('Usuario eliminado correctamente al dispositivo remoto.')
         else:
             print('Error al eliminar el usuario del dispositivo remoto. Código de estado:', response.status_code)
             print('Respuesta del servidor:', response.text)
 
-        super().delete_model(request, obj)
+    """def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        user_profile = UserProfile.objects.get(id=form.instance.id)
+        student_profile = UserProfileStudent.objects.get(user_profile=user_profile)
+        print(user_profile, " ", student_profile)"""
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         default_user_device_id = get_default_user_device_id()
         form.base_fields['user_device_id'].initial = default_user_device_id
+        if obj:  # estamos modificando un objeto existente
+            form.base_fields['profile_type'].choices = [
+                ('normal', 'Normal'),
+                ('visitor', 'Visitante'),
+                ('blackList', 'Bloqueado')
+            ]
+        else:  # estamos creando un nuevo objeto
+            form.base_fields['profile_type'].choices = [
+                ('normal', 'Normal'),
+                ('visitor', 'Visitante')
+            ]
         return form
 
 @admin.register(Room)
@@ -237,3 +270,10 @@ class ManageUserTypes(admin.ModelAdmin):
     ordering=('id',)
     search_fields= ('id','user_type')
     list_per_page=10
+
+def create_default_usertypes():
+    default_usertypes = ['Alumno', 'Mantenimiento']
+    for usertype in default_usertypes:
+        UserTypes.objects.get_or_create(user_type=usertype)
+
+create_default_usertypes()
