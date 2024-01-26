@@ -68,7 +68,7 @@ class Device(models.Model):
     is_synchronized = models.BooleanField(default=True, null=True)
     user = models.CharField(max_length=50, null=True)
     password = encrypt(models.CharField(max_length=128, null=True))
-    massive_opening = models.BooleanField(default=False, null=True)
+    massive_opening = models.BooleanField(null=True)
    
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -152,7 +152,6 @@ class UserTypes(models.Model):
     class Meta:
         verbose_name = "Tipos de usuarios"
         verbose_name_plural = "Tipos de usuarios"
-
 
 class UserProfile(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, null=True, verbose_name="Dispositivo")
