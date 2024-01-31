@@ -3,35 +3,39 @@
 
 <script>
   $(document).ready(function () {
-    /*$("#my-form button").click(function (event) {
-      event.preventDefault();
+    $('#select-device').change(function() {
+      let selectedDevice = $(this).val(); 
+      
+      let links = {
+        {% for device in devices %}
+        '{{ device }}': 'individual/' + '{{device}}' + '/',
+        {% endfor %}
+      };
 
-      var device = $(this).attr("data-value");
-      var url = "/video/open_door/" + device;
+      if (links[selectedDevice]) {
+        window.location.href = links[selectedDevice];
+      } else {
+        console.log('No hay enlace asociado para el dispositivo seleccionado.');
+      }
+  });
+});
+</script>
 
-      $.ajax({
-        url: url,
-        type: "POST",
-        data: $("#my-form").serialize(),
-        success: function (data) {
-          console.log(data);
-        },
-      });
-    });*/
-  
-    // Botón nuevo para abrir todas las puertas
+<script>
+  // Botón nuevo para abrir todas las puertas
+  $(document).ready(function () {
     $("#openAllButton").click(function (event) {
-      event.preventDefault();
-      var url = "/video/massive_door_opening/";
-      $.ajax({
-        url: url,
-        type: "GET",
-        success: function (data) {
-          console.log(data);
-          // Aquí puedes manejar la respuesta de la función si es necesario
-        },
+        event.preventDefault();
+        let url = "/video/massive_door_opening/";
+        $.ajax({
+          url: url,
+          type: "GET",
+          success: function (data) {
+            console.log(data);
+            // Aquí puedes manejar la respuesta de la función si es necesario
+          },
+        });
       });
-    });
   });
 </script>
 
@@ -92,21 +96,20 @@
   </head>
   <body>
     <div id="container">
-      <div id="video-container">
-        <iframe
-          src="{{ link }}"
-          width="100%"
-          height="100%"
-          frameborder="0"
-        ></iframe>
+      <div id="selection-container">
+        <label for="select-device">Selecciona un dispositivo:</label>
+        <select id="select-device">
+          <option value="">Ninguno</option> 
+          {% for device in devices %}
+            <option value="{{ device }}">{{ device }}</option>
+          {% endfor %}
+        </select>
       </div>
+        <div id="video-container">
+            <iframe src=" {{ link }}" width="100%" height="100%" frameborder="0"></iframe>
+        </div>
       <div id="form-container">
         <form id="my-form">
-          <!--{% for device in devices %} {% csrf_token %}
-          <button type="submit" data-value="{{ device }}">
-            Puerta {{ device }}
-          </button>
-          {% endfor %}-->
           <button id="openAllButton" type="button">Abrir Todas</button>
         </form>
       </div>

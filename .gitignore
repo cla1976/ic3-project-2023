@@ -4,6 +4,9 @@
 /secrets.json
 /API Access Control Gateway.postman_collection.json
 /workspace.postman_globals.json
+/go2rtc.exe
+/go2rtc.yaml
+/user_profile_api/migrations/
 
 ### VisualStudioCode ###
 .vscode/*

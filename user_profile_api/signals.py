@@ -1,10 +1,12 @@
-from django.db.models.signals import post_save, pre_save, pre_delete, post_delete, m2m_changed
+from django.db.models.signals import post_save, pre_save, pre_delete, post_delete, m2m_changed, post_migrate
 from django.dispatch import receiver
 import requests
 import yaml
 import json, base64
 from datetime import datetime
 from user_profile_api.middleware import specific_page_loaded
+from django.conf import settings
+from django.utils import timezone 
 
 from user_profile_api.urls_services import (
     URL_RECORD_USER,
@@ -18,13 +20,14 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_FaceDataRecord,
 )
-#from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from users_admin.settings import DEVICE_UUID
 from requests.auth import HTTPDigestAuth
-from user_profile_api.models import UserProfile, SubjectSchedule, Device
+from user_profile_api.models import UserProfileStudent, SubjectSchedule, Device, UserTypes, UserProfile
 from user_profile_api.services import get_default_user_device_id
 from django.db.models import F
 from unidecode import unidecode
+from requests.auth import HTTPDigestAuth
+from .models import UserProfile
 
 # Archivo de señales. Se activan funcionalidades que están ligadas al panel de administración
 # que trae por defecto Django basandose en detección de cambios en los modelos 
@@ -42,7 +45,7 @@ mockeo = False
 # Dependiendo del condicional se crea o modifica el usuario con o sin imagen.
 
 #corregida
-@receiver(m2m_changed, sender=UserProfile.subject.through)
+@receiver(m2m_changed, sender=UserProfileStudent.subject.through)
 def update_user_subjects(sender, instance, action, pk_set, **kwargs):
     if action == "pre_add" or action == "pre_remove":
 
@@ -428,7 +431,7 @@ def delete_yaml_config(sender, instance, **kwargs):
 # Se envía un JSON dependiendo del condicional si se está creando o modificando.
 
 #corregida, revisar
-@receiver(post_save, sender=UserProfile)
+@receiver(post_save, sender=UserProfileStudent)
 def send_user_data(sender, instance, created, **kwargs):
     if created:
         if mockeo:
@@ -506,7 +509,7 @@ def send_user_data(sender, instance, created, **kwargs):
             return
 
             
-        previous_instance = UserProfile.objects.get(pk=instance.pk)
+        previous_instance = UserProfileStudent.objects.get(pk=instance.pk)
 
         previous_subject_ids = set(previous_instance.subject.values_list('pk', flat=True))
         current_subject_ids = set(instance.subject.values_list('pk', flat=True))
@@ -626,13 +629,11 @@ def send_user_data(sender, instance, created, **kwargs):
                         print(mensaje2)
                         raise Exception("Failed to modify instance: {}".format(response.text))
 
-            
-
 # Señal que se activa después de agregar un usuario en la tabla UserProfile. A diferencia
 # de la señal anterior, se utiliza para sumar la imagen si es que se adjuntó alguna.
 
 #corregida
-@receiver(post_save, sender=UserProfile)
+@receiver(post_save, sender=UserProfileStudent)
 def send_image_data(sender, created, instance, **kwargs):
         if created:
             return 
@@ -720,8 +721,6 @@ def send_image_data(sender, created, instance, **kwargs):
                         print("User created successfully and data sent to API!")
                     else:
                         raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
-
-
 
 # Se activa luego de cargar un horario de materia en la tabla SubjectSchedule.
 # Se sube el JSON al dispositivo respectivo tanto como para el horario de la materia
@@ -826,15 +825,13 @@ def enviar_horario(sender, instance, **kwargs):
         raise Exception("Error registrando el horario: {}".format(response.text))
     
 
-
-
 #corregida
-@receiver(pre_delete, sender=UserProfile)
+@receiver(pre_delete, sender=UserProfileStudent)
 def delete_user_data(sender, instance, **kwargs):
     if mockeo:
             return
 
-    pre_delete.disconnect(delete_user_data, sender=UserProfile)
+    pre_delete.disconnect(delete_user_data, sender=UserProfileStudent)
     
     subject_schedules = instance.subject.all()
     ips = []
@@ -889,8 +886,159 @@ def delete_user_data(sender, instance, **kwargs):
             print("Error: can't delete user")
             raise Exception("Failed to delete instance: {}".format(response.text))
 
-        pre_delete.connect(delete_user_data, sender=UserProfile)
+        pre_delete.connect(delete_user_data, sender=UserProfileStudent)
     
+# Función encargada de chequear que los tipos de usuarios por defecto estén creados en la aplicación.
+# En caso de que no se encuentren creados se crean, si no, se obtienen y no se hace nada.
 
+def create_default_usertypes():
+    default_usertypes = ['Alumno', 'Mantenimiento']
+    for usertype in default_usertypes:
+        UserTypes.objects.get_or_create(user_type=usertype)
 
+@receiver(post_migrate)
+def post_migrate_receiver(sender, **kwargs):
+    create_default_usertypes()
 
+# Función encargada de enviar los datos de los usuarios creados o modificados al dispositivo remoto
+
+@receiver(post_save, sender=UserProfile)
+def post_save_user_profile(sender, instance, created, **kwargs):
+    instance.last_updated = timezone.now()
+    device = instance.device
+    ip = device.ip
+    door_port = device.door_port
+    uuid = settings.DEVICE_UUID
+    username = device.user
+    password = device.get_password()
+
+    if created:
+        url = f"http://{ip}:{door_port}{URL_RECORD_USER}?format=json&devIndex={uuid}"
+        headers = {'Content-Type': 'application/json'}
+        print(url)
+
+        if instance.begin_time == None and instance.end_time == None:
+            data = {
+            "UserInfo":
+                {
+                    "employeeNo": str(instance.user_device_id),
+                    "name": str(instance.first_name + " " + instance.last_name),
+                    "userType": instance.profile_type,
+                    "gender": instance.gender,
+                    "Valid": {
+                        "enable": instance.is_active
+                    }, 
+                    "localUIRight": instance.is_staff
+                }
+            }
+            print(data)
+        else:
+            begin_time_str = instance.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.begin_time else None
+            end_time_str = instance.end_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.end_time else None
+            data = {
+            "UserInfo":
+                {
+                    "employeeNo": str(instance.user_device_id),
+                    "name": str(instance.first_name + " " + instance.last_name),
+                    "userType": instance.profile_type,
+                    "gender": instance.gender,
+                    "Valid": {
+                        "enable": instance.is_active, 
+                        "beginTime": begin_time_str,
+                        "endTime": end_time_str,
+                    }, 
+                    "localUIRight": instance.is_staff
+                }
+            }
+            print(data)
+
+        auth = HTTPDigestAuth(username, password)
+        response = requests.post(url, data=json.dumps(data), headers=headers, auth=auth)
+
+        if response.status_code == 200:
+            print('Usuario agregado correctamente al dispositivo remoto.')
+        else:
+            print('Error al agregar el usuario al dispositivo remoto. Código de estado:', response.status_code)
+            print('Respuesta del servidor:', response.text)
+
+    else: 
+        url = f"http://{ip}:{door_port}{URL_MODIFY_USER}?format=json&devIndex={uuid}"
+        headers = {'Content-Type': 'application/json'}
+        print(url)
+
+        if instance.begin_time == None and instance.end_time == None:
+            data = {
+            "UserInfo":
+                {
+                    "employeeNo": str(instance.user_device_id),
+                    "name": str(instance.first_name + " " + instance.last_name),
+                    "userType": instance.profile_type,
+                    "gender": instance.gender,
+                    "Valid": {
+                        "enable": instance.is_active
+                    }, 
+                    "localUIRight": instance.is_staff
+                }
+            }
+            print(data)
+        else:
+            begin_time_str = instance.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.begin_time else None
+            end_time_str = instance.end_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.end_time else None
+            data = {
+            "UserInfo":
+                {
+                    "employeeNo": str(instance.user_device_id),
+                    "name": str(instance.first_name + " " + instance.last_name),
+                    "userType": instance.profile_type,
+                    "gender": instance.gender,
+                    "Valid": {
+                        "enable": instance.is_active, 
+                        "beginTime": begin_time_str,
+                        "endTime": end_time_str,
+                    }, 
+                    "localUIRight": instance.is_staff
+                }
+            }
+            print(data)
+
+        auth = HTTPDigestAuth(username, password)
+        response = requests.put(url, data=json.dumps(data), headers=headers, auth=auth)
+        
+        if response.status_code == 200:
+            print('Usuario modificado correctamente.')
+        else:
+            print('Error al modificar el usuario en el dispositivo remoto. Código de estado:', response.status_code)
+            print('Respuesta del servidor:', response.text)
+
+# Función encargada de enviar los datos de eliminación de usuarios
+            
+@receiver(post_delete, sender=UserProfile)
+def post_delete_userprofile(sender, instance, **kwargs):
+    device = instance.device
+    ip = device.ip
+    door_port = device.door_port
+    uuid = settings.DEVICE_UUID
+    username = device.user
+    password = device.get_password()
+
+    url = f"http://{ip}:{door_port}{URL_DELETE_USER}?format=json&devIndex={uuid}"
+    headers = {'Content-Type': 'application/json'}
+    print(url)
+
+    data = {
+        "UserInfoDetail": {
+            "mode": "byEmployeeNo",
+            "EmployeeNoList": [{
+                "employeeNo": str(instance.user_device_id)
+            }]
+        }
+    }
+
+    auth = HTTPDigestAuth(username, password)
+    response = requests.put(url, data=json.dumps(data), headers=headers, auth=auth)
+
+    if response.status_code == 200:
+        print('Usuario eliminado correctamente al dispositivo remoto.')
+    else:
+        print('Error al eliminar el usuario del dispositivo remoto. Código de estado:', response.status_code)
+        print('Respuesta del servidor:', response.text)
