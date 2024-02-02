@@ -11,15 +11,26 @@
 11-crear un usuario mysql y asignarle los permisos necesario y contraseña
 12-crear base de datos usando el usuario creado en el paso 11, la base de datos debe llamarse ic3unrafproject
 13-configurar settings.py y secrets.json con el nombre de usuario y contraseña de la base de datos, además modificar setting.py con lo necesario para q ingresen todas las IP: ALLOWED_HOST['*']
+
 14-python3 manage.py makemigrations
 15-python3 manage.py migrate
 16-python3 manage.py createsuperuser asignando nombre y contraseña pero no correo
-17-python3 manage.py runserver 0.0.0.0:8000
+17- instalar pip install django-cors-headers
+18-python3 manage.py runserver 0.0.0.0:8000
 
 
 En una consola aparte:
 Se debe descargar go2rtc para linux, el mismo debe alojarse en dentro de la carpeta q contenga secrets.json(IC3): https://github.com/AlexxIT/go2rtc/releases/download/v1.8.5/go2rtc_linux_amd64
+(# Descargar el archivo
+wget https://github.com/AlexxIT/go2rtc/releases/download/v1.8.5/go2rtc_linux_amd64
+
+# Dar permisos de ejecución al archivo descargado
+chmod +x go2rtc_linux_amd64)
+
 También se debe crear el archivo go2rtc.yaml y agregar las configuraciones
 Para ejecutar go2rtc se debe ejecutar el comando ./go2rtc_linux_amd64
 ejecutar el programa al mismo tiempo q se ejecuta el runserver
+
+
+Configurar el secrets.json en Gateway_cameras: colocar la IP Publica donde esta alojado el servidor
 
