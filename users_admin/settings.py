@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.conf import ENVIRONMENT_VARIABLE
 import utils
+from .celery import app as celery_app
 from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -48,17 +49,13 @@ INSTALLED_APPS = [
 ]
 
 CELERY_BEAT_SCHEDULE = {
-      'add-every-30-seconds': {
-        'task': 'user_profile_api.tasks.add',
-        'schedule': crontab(hour=20, minute=30, day_of_week=4),
-        'args': (2, 2),
-        'options': {
-            'expires': 15.0,
-        },
-    },
+       'sincronize-users': {
+           'task': 'user_profile_api.tasks.sincronize_users', 
+           'schedule': crontab(minute='*/3'),
+      },   
 }
 
-CELERY_ALWAYS_EAGER = True
+CELERY_ALWAYS_EAGER = False
 # Celery Configuration Options
 CELERY_TIMEZONE = "America/Argentina/Buenos_Aires"
 CELERY_TASK_TRACK_STARTED = True
