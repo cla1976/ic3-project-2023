@@ -51,7 +51,7 @@ INSTALLED_APPS = [
 CELERY_BEAT_SCHEDULE = {
        'sincronize-users': {
            'task': 'user_profile_api.tasks.sincronize_users', 
-           'schedule': crontab(minute='*/3'),
+           'schedule': crontab(minute=0, hour='*/4'),
       },   
 }
 
