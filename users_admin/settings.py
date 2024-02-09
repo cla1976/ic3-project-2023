@@ -151,7 +151,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'ic3unrafproject',
-        'USER': 'root',
+        'USER': 'admin',
         'PASSWORD': utils.get_secret('DB_PASSWORD'),
         'HOST': 'localhost',
         'PORT': '3306',
@@ -215,6 +215,7 @@ GATEWAY_PASSWORD = utils.get_secret('GATEWAY_PASSWORD')
 DEVICE_UUID = 'D76C6D74-4B20-4BB1-8C4C-B51244DF3026'
 GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
 GATEWAY_ONE_CAMERA = utils.get_secret('GATEWAY_ONE_CAMERA')
+GATEWAY_CAMERA_SCREENSHOT = utils.get_secret('GATEWAY_CAMERA_SCREENSHOT')
 
 BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
 
