@@ -20,6 +20,10 @@ class UserProfileForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(UserProfileForm, self).__init__(*args, **kwargs)
+        
+         # Excluye la opción 'Bloqueado' al agregar un nuevo usuario
+        if not self.instance.pk:
+            self.fields['profile_type'].choices = [choice for choice in self.fields['profile_type'].choices if choice[0] != 'blackList']
 
         required_fields = ['device', 'first_name', 'last_name', 'dni', 'email', 'gender', 'address', 'phone', 
                            'is_active', 'is_staff', 'profile_type', 'user_type' ]
