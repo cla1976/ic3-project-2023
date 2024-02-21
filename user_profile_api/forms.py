@@ -25,7 +25,7 @@ class UserProfileForm(forms.ModelForm):
         if not self.instance.pk:
             self.fields['profile_type'].choices = [choice for choice in self.fields['profile_type'].choices if choice[0] != 'blackList']
 
-        required_fields = ['user_device_id','device', 'first_name', 'last_name', 'dni', 'email', 'gender', 'address', 'phone', 
+        required_fields = ['device', 'first_name', 'last_name', 'dni', 'email', 'gender', 'address', 'phone', 
                            'is_active', 'is_staff', 'profile_type', 'user_type' ]
         for field_name in required_fields:
             self.fields[field_name].required = True
@@ -34,7 +34,6 @@ class UserProfileForm(forms.ModelForm):
         for field_name in not_required_fields:
             self.fields[field_name].required = False
 
-        self.fields['user_device_id'].disabled = True
     
     def clean(self):
         cleaned_data = super().clean()

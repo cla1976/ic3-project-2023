@@ -20,9 +20,9 @@ class UserProfileMaintenanceInline(admin.StackedInline):
 class ManageUser(admin.ModelAdmin):
     inlines = [UserProfileStudentInline, UserProfileMaintenanceInline]
     form = UserProfileForm
-    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type', 'is_active', 'is_staff', 'profile_type', 'file_image')
-    ordering=('user_device_id', 'first_name','last_name')
-    search_fields= ('user_device_id', 'dni', 'email', 'phone', 'first_name', 'last_name')
+    list_display=('dni', 'first_name', 'last_name', 'email', 'phone','user_type')
+    ordering=('first_name','last_name')
+    search_fields= ('dni', 'email', 'phone', 'first_name', 'last_name')
     list_per_page=50
     #filter_vertical = ('user_type',)
     exclude = ('planTemplateNo',)
@@ -33,9 +33,6 @@ class ManageUser(admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
-
-        default_user_device_id = get_default_user_device_id()
-        form.base_fields['user_device_id'].initial = default_user_device_id
         if obj:  # modificando un objeto existente
             form.base_fields['profile_type'].choices = [
                 ('normal', 'Normal'),

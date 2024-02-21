@@ -23,7 +23,7 @@ from user_profile_api.urls_services import (
 from users_admin.settings import DEVICE_UUID
 from requests.auth import HTTPDigestAuth
 from user_profile_api.models import UserProfileStudent, SubjectSchedule, Device, UserTypes, UserProfile
-from user_profile_api.services import get_default_user_device_id
+# from user_profile_api.services import get_default_user_device_id
 from django.db.models import F
 from unidecode import unidecode
 from requests.auth import HTTPDigestAuth
@@ -100,11 +100,11 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
             data = {
             "UserInfoSearchCond":
                 {
-                    "searchID": str(instance.user_device_id),
+                    "searchID": str(instance.dni),
                     "searchResultPosition":0,
                     "maxResults":1,
                     "EmployeeNoList": [{
-                        "employeeNo": str(instance.user_device_id)
+                        "employeeNo": str(instance.dni)
                     }]
                 }
             }
@@ -144,7 +144,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 data = {
                     "UserInfo": 
                         {
-                            "employeeNo": str(instance.user_device_id),
+                            "employeeNo": str(instance.dni),
                             "name": str(instance.first_name + " " + instance.last_name),
                             "userType": instance.profile_type,
                             "gender": instance.gender,
@@ -195,7 +195,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                 print("Acá es 1")
 
                                 payload = {
-                                    "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.user_device_id) + '"}', 'application/json'),
+                                    "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.dni) + '"}', 'application/json'),
                                     "img": ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
                                 }
 
@@ -247,7 +247,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 data = {
                     "UserInfo": 
                         {
-                            "employeeNo": str(instance.user_device_id),
+                            "employeeNo": str(instance.dni),
                             "name": str(instance.first_name + " " + instance.last_name),
                             "userType": instance.profile_type,
                             "gender": instance.gender,
@@ -316,7 +316,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 data = {
                     "UserInfo": 
                         {
-                            "employeeNo": str(instance.user_device_id),
+                            "employeeNo": str(instance.dni),
                             "name": str(instance.first_name + " " + instance.last_name),
                             "userType": instance.profile_type,
                             "gender": instance.gender,
@@ -468,7 +468,7 @@ def send_user_data(sender, instance, created, **kwargs):
                 data = {
                     "UserInfo": 
                         {
-                            "employeeNo": str(instance.user_device_id),
+                            "employeeNo": str(instance.dni),
                             "name": str(instance.first_name + " " + instance.last_name),
                             "userType": instance.profile_type,
                             "gender": instance.gender,
@@ -540,7 +540,7 @@ def send_user_data(sender, instance, created, **kwargs):
                 data = {
                     "UserInfo": 
                         {
-                            "employeeNo": str(instance.user_device_id),
+                            "employeeNo": str(instance.dni),
                             "name": str(instance.first_name + " " + instance.last_name),
                             "userType": instance.profile_type,
                             "gender": instance.gender,
@@ -604,7 +604,7 @@ def send_user_data(sender, instance, created, **kwargs):
                     data = {
                         "faceLibType": "blackFD",
                         "FDID": "1",
-                        "FPID": str(instance.user_device_id),
+                        "FPID": str(instance.dni),
                         "deleteFP": True
                     }
 
@@ -669,7 +669,7 @@ def send_image_data(sender, created, instance, **kwargs):
                     data = {
                         "faceLibType": "blackFD",
                         "FDID": "1",
-                        "FPID": str(instance.user_device_id),
+                        "FPID": str(instance.dni),
                         "deleteFP": True
                     }
 
@@ -708,7 +708,7 @@ def send_image_data(sender, created, instance, **kwargs):
                     
 
                     payload = {
-                        "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.user_device_id) + '"}', 'application/json'),
+                        "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.dni) + '"}', 'application/json'),
                         "img": ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
                     }
 
@@ -868,7 +868,7 @@ def delete_user_data(sender, instance, **kwargs):
         data = {
             "UserInfoDetail": {
                 "mode": "byEmployeeNo",
-                "EmployeeNoList": [{"employeeNo": str(instance.user_device_id)}],
+                "EmployeeNoList": [{"employeeNo": str(instance.dni)}],
             }
         }
 
@@ -911,6 +911,15 @@ def post_save_user_profile(sender, instance, created, **kwargs):
     uuid = settings.DEVICE_UUID
     username = device.user
     password = device.get_password()
+    if instance.is_active == 'Sí':
+        is_active = True
+    else:
+        is_active = False
+
+    if instance.is_staff == 'Sí':
+        is_staff = True
+    else:
+        is_staff = False
 
     if created:
         url = f"http://{ip}:{door_port}{URL_RECORD_USER}?format=json&devIndex={uuid}"
@@ -921,14 +930,14 @@ def post_save_user_profile(sender, instance, created, **kwargs):
             data = {
             "UserInfo":
                 {
-                    "employeeNo": str(instance.user_device_id),
+                    "employeeNo": str(instance.dni),
                     "name": str(instance.first_name + " " + instance.last_name),
                     "userType": instance.profile_type,
                     "gender": instance.gender,
                     "Valid": {
-                        "enable": instance.is_active
+                        "enable": is_active
                     }, 
-                    "localUIRight": instance.is_staff
+                    "localUIRight": is_staff
                 }
             }
             print(data)
@@ -938,16 +947,16 @@ def post_save_user_profile(sender, instance, created, **kwargs):
             data = {
             "UserInfo":
                 {
-                    "employeeNo": str(instance.user_device_id),
+                    "employeeNo": str(instance.dni),
                     "name": str(instance.first_name + " " + instance.last_name),
                     "userType": instance.profile_type,
                     "gender": instance.gender,
                     "Valid": {
-                        "enable": instance.is_active, 
+                        "enable": is_active, 
                         "beginTime": begin_time_str,
                         "endTime": end_time_str,
                     }, 
-                    "localUIRight": instance.is_staff
+                    "localUIRight": is_staff
                 }
             }
             print(data)
@@ -970,14 +979,14 @@ def post_save_user_profile(sender, instance, created, **kwargs):
             data = {
             "UserInfo":
                 {
-                    "employeeNo": str(instance.user_device_id),
+                    "employeeNo": str(instance.dni),
                     "name": str(instance.first_name + " " + instance.last_name),
                     "userType": instance.profile_type,
                     "gender": instance.gender,
                     "Valid": {
-                        "enable": instance.is_active
+                        "enable": is_active
                     }, 
-                    "localUIRight": instance.is_staff
+                    "localUIRight": is_staff
                 }
             }
             print(data)
@@ -987,16 +996,16 @@ def post_save_user_profile(sender, instance, created, **kwargs):
             data = {
             "UserInfo":
                 {
-                    "employeeNo": str(instance.user_device_id),
+                    "employeeNo": str(instance.dni),
                     "name": str(instance.first_name + " " + instance.last_name),
                     "userType": instance.profile_type,
                     "gender": instance.gender,
                     "Valid": {
-                        "enable": instance.is_active, 
+                        "enable": is_active, 
                         "beginTime": begin_time_str,
                         "endTime": end_time_str,
                     }, 
-                    "localUIRight": instance.is_staff
+                    "localUIRight": is_staff
                 }
             }
             print(data)
@@ -1029,7 +1038,7 @@ def post_delete_userprofile(sender, instance, **kwargs):
         "UserInfoDetail": {
             "mode": "byEmployeeNo",
             "EmployeeNoList": [{
-                "employeeNo": str(instance.user_device_id)
+                "employeeNo": str(instance.dni)
             }]
         }
     }
