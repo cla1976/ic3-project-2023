@@ -34,6 +34,8 @@ from django.db.models import F
 import itertools
 import subprocess
 from django.contrib import messages
+import random 
+import string 
 
 def check_admin(user):
    return user.is_superuser
@@ -252,6 +254,19 @@ class GetFingerprint(TemplateView):
 
         return JsonResponse({'msg': finger_data})
 
+class GetCardCode(TemplateView):
+    template_name = 'admin/submit_line.html'
+
+    def post(self, request, *args, **kwargs):
+        
+        def generar_id(longitud):
+            caracteres = string.ascii_letters + string.digits  
+            return ''.join(random.choice(caracteres) for _ in range(longitud))
+
+        longitud_id = random.randint(17, 20)
+        id_unico = generar_id(longitud_id)
+
+        return JsonResponse({'codecard': id_unico})
 
 
 

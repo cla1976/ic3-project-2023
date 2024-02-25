@@ -3,6 +3,7 @@ from django.dispatch import receiver
 import requests
 import yaml
 import json, base64
+import time
 from datetime import datetime
 from user_profile_api.middleware import specific_page_loaded
 
@@ -18,7 +19,11 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_FaceDataRecord,
     URL_UPLOAD_FINGERPRINT,
+    URL_DELETE_FINGERPRINT,
     URL_CHECK_FINGER_CAPABILITIES,
+    URL_ADD_CARD,
+    URL_MODIFY_CARD,
+    URL_DELETE_CARD,
 )
 from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from requests.auth import HTTPDigestAuth
@@ -225,6 +230,30 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                     print("Huella creada y enviada correctamente!")
                                 else:
                                     raise Exception("Error enviando huella al dispositivo: {}".format(response.text))
+
+                        if instance.card:
+                            base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                            record_url = f"{URL_ADD_CARD}?format=json"
+                            full_url = f"{base_url}{record_url}"
+
+                            print("Acá se crea con tarjeta")
+                            payload = { 
+                                "CardInfo": {
+                                    "employeeNo": str(instance.user_device_id),
+                                    "cardNo": str(instance.card),
+                                    "cardType": str(instance.cardType)
+                                }
+                            }
+
+                            print(payload)
+
+                            response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                            if response.status_code == 200:
+                                print("Tarjeta creada y enviada correctamente!")
+                            else:
+                                raise Exception("Error enviando tarjeta al dispositivo: {}".format(response.text))
+
 
                 else:
                     raise Exception("Error enviando el usuario al dispositivo: {}".format(response.text))
@@ -749,30 +778,125 @@ def enviar_huella(sender, created, instance, **kwargs):
             response = requests.get(full_url, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
 
             if response.status_code == 200:
+
                 base_url = f'http://{ip_address}:{GATEWAY_PORT}'
-                record_url = f"{URL_UPLOAD_FINGERPRINT}?format=json"
+                record_url = f"{URL_DELETE_FINGERPRINT}?format=json"
                 full_url = f"{base_url}{record_url}"
 
                 print("Acá es 10")
-                print(instance.fingerprint)
+                #print(instance.fingerprint)
                 #print(plano)
 
                 payload = {
-                    "FingerPrintCfg": {
-                        "employeeNo": str(instance.user_device_id),
-                        "fingerPrintID": 1,
-                        "enableCardReader": [1],
-                        "fingerType": "normalFP",
-                        "fingerData": instance.fingerprint
+                    "FingerPrintDelete":{
+                        "mode":"byEmployeeNo",
+                        "EmployeeNoDetail":{
+                        "employeeNo": str(instance.user_device_id)
+                        }
                     }
                 }
+
+                print(full_url)
+
+                response = requests.request("PUT", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                if response.status_code == 200:
+                    print("Huella borrada para modificar")
+
+                    time.sleep(1)
+
+                    base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                    record_url = f"{URL_UPLOAD_FINGERPRINT}?format=json"
+                    full_url = f"{base_url}{record_url}"
+
+                    #print(instance.fingerprint)
+                    #print(plano)
+
+                    print(full_url)
+
+                    payload = {
+                        "FingerPrintCfg": {
+                            "employeeNo": str(instance.user_device_id),
+                            "fingerPrintID": 1,
+                            "enableCardReader": [1],
+                            "fingerType": "normalFP",
+                            "fingerData": instance.fingerprint
+                        }
+                    }
+
+                    response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                    if response.status_code == 200:
+                        print("Huella modificada y enviada correctamente!")
+                    else:
+                        raise Exception("Error enviando huella al dispositivo: {}".format(response.text))
+
+                else:
+                    raise Exception("Error borrando la huella para modificar. Dispositivo: {}".format(response.text))
+
+
+                
+
+@receiver(post_save, sender=UserProfile)
+def enviar_tarjeta(sender, created, instance, **kwargs):
+    if mockeo:
+        return
+
+    if created:
+        return 
+    
+    if instance.card:
+        subject_schedules = instance.subject.all()
+        ips = []
+
+        for subject_schedule in subject_schedules:
+            device = subject_schedule.device
+            if device and device.is_active:  
+                ips.append(device.ip)
+
+        for ip_address in ips:
+
+            base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+            record_url = f"{URL_DELETE_CARD}?format=json"
+            full_url = f"{base_url}{record_url}"
+
+            print("Se borra la tarjeta para agregar otra")
+
+            payload = {         
+                "CardInfoDelCond" : {
+                    "EmployeeNoList" : [{
+                    "employeeNo": str(instance.user_device_id)
+                    }]
+                }
+            }
+
+            response = requests.request("PUT", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            if response.status_code == 200:
+                print("Tarjeta borrada para ser reemplazada")
+                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                record_url = f"{URL_ADD_CARD}?format=json"
+                full_url = f"{base_url}{record_url}"
+
+                print("Acá se reemplaza la tarjeta")
+                payload = { 
+                    "CardInfo": {
+                        "employeeNo": str(instance.user_device_id),
+                        "cardNo": str(instance.card),
+                        "cardType": str(instance.cardType)
+                    }
+                }
+                
 
                 response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
 
                 if response.status_code == 200:
-                    print("Huella enviada correctamente!")
+                    print("Tarjeta modificada y enviada correctamente!")
                 else:
-                    raise Exception("Error enviando huella al dispositivo: {}".format(response.text))
+                    raise Exception("Error modificando tarjeta al dispositivo: {}".format(response.text))
+            else:
+                raise Exception("Error borrando tarjeta para reemplazar en dispositivo: {}".format(response.text))
+
 
         
 
@@ -872,6 +996,7 @@ def enviar_horario(sender, instance, **kwargs):
         else:
             raise Exception("Error registrando el template de horario: {}".format(response.text))
     else:
+        print(full_url)
         raise Exception("Error registrando el horario: {}".format(response.text))
     
 

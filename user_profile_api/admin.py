@@ -12,10 +12,24 @@ from django.http import JsonResponse
 from django.http import HttpResponse
 from users_admin.settings import HASHID_FIELD_SALT
 from django.contrib.auth.hashers import make_password, check_password
+from django.utils.html import format_html
+import qrcode
+import base64 
+from io import BytesIO
+from PIL import Image, ImageDraw
+import re
+
+class UserProfileForm(forms.ModelForm):
+    fingerprint = forms.CharField(widget=forms.PasswordInput, required=False)
+    
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
 
 @admin.register(UserProfile)
 class ManageUser(admin.ModelAdmin):
-    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'profile_type', 'fileImage', 'fingerprint')
+    form = UserProfileForm
+    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'is_active', 'is_staff', 'profile_type', 'fileImage', 'qr_code', 'huella')
     ordering=('user_device_id',)
     search_fields= ('user_device_id', 'dni', 'email', 'first_name', 'last_name')
     list_per_page=50
@@ -24,14 +38,84 @@ class ManageUser(admin.ModelAdmin):
     readonly_fields=('date_created', 'last_updated', 'timeType')
 
     def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
-        if 'userprofile/add/' in request.path:
+        if 'userprofile/add/' in request.path or re.search('userprofile/.*/change/', request.path):
             context.update({"custom_button": True, "show_copy_button": True})
         else:
             context.update({"custom_button": False, "show_copy_button": False})
         return super().render_change_form(request, context, add, change, form_url, obj)
 
+    def qr_code(self, obj):
+        if isinstance(obj.card, str) and len(obj.card) < 17:
+            img = Image.new('RGB', (160, 160), color = (256, 256, 256))
+
+            d = ImageDraw.Draw(img)
+
+            d.line((0, 0) + img.size, fill=128)
+            d.line((0, img.size[1], img.size[0], 0), fill=128)
+
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+
+            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+            
+        else:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=5,
+                border=4,
+            )
+            qr.add_data(obj.card)
+            qr.make(fit=True)
+
+            img = qr.make_image(fill='black', back_color='white')
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+
+            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+
+    qr_code.short_description = 'Código QR'
+
+    def huella(self, obj):
+        if obj.fingerprint == '':
+            img = Image.new('RGB', (160, 160), color = (256, 256, 256))
+
+            d = ImageDraw.Draw(img)
+
+            d.line((0, 0) + img.size, fill=128)
+            d.line((0, img.size[1], img.size[0], 0), fill=128)
+
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+
+            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+            
+        else:
+            img = Image.open('jazzmin/static/custom/huella.png')
+            new_size = (130, 160) 
+            img = img.resize(new_size)
+            buffered = BytesIO()
+
+            img.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+
+
+    huella.short_description= 'Huella digital'
+
+
     def save_model(self, request, obj, form, change):
+        if 'fingerprint' in form.changed_data and not form.cleaned_data['fingerprint']:
+            obj.fingerprint = UserProfile.objects.get(pk=obj.pk).fingerprint
+        
         obj.last_updated = timezone.now()
+        
         some_salt = HASHID_FIELD_SALT
         print(some_salt)
         plano = obj.fingerprint
@@ -39,6 +123,7 @@ class ManageUser(admin.ModelAdmin):
         print(plano)
         print(obj.fingerprint)
         #check_password(plano, obj.fingerprint,preferred='argon2')
+
 
         super().save_model(request, obj, form, change)
 
