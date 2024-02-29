@@ -45,22 +45,7 @@ class ManageUser(admin.ModelAdmin):
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def qr_code(self, obj):
-        if isinstance(obj.card, str) and len(obj.card) < 17:
-            img = Image.new('RGB', (160, 160), color = (256, 256, 256))
-
-            d = ImageDraw.Draw(img)
-
-            d.line((0, 0) + img.size, fill=128)
-            d.line((0, img.size[1], img.size[0], 0), fill=128)
-
-            buffered = BytesIO()
-            img.save(buffered, format="PNG")
-
-            img_str = base64.b64encode(buffered.getvalue()).decode()
-
-            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
-            
-        else:
+        if isinstance(obj.card, str) and len(obj.card) >= 17 and obj.card:
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -70,7 +55,22 @@ class ManageUser(admin.ModelAdmin):
             qr.add_data(obj.card)
             qr.make(fit=True)
 
-            img = qr.make_image(fill='black', back_color='white')
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+
+            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+        else:
+            img = Image.new('RGB', (160, 160), color = (256, 256, 256))
+
+            d = ImageDraw.Draw(img)
+
+            d.line((0, 0) + img.size, fill=128)
+            d.line((0, img.size[1], img.size[0], 0), fill=128)
+
             buffered = BytesIO()
             img.save(buffered, format="PNG")
 

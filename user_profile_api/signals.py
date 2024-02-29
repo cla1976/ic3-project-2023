@@ -841,10 +841,9 @@ def enviar_huella(sender, created, instance, **kwargs):
 def enviar_tarjeta(sender, created, instance, **kwargs):
     if mockeo:
         return
-
     if created:
-        return 
-    
+        return
+
     if instance.card:
         subject_schedules = instance.subject.all()
         ips = []
@@ -860,7 +859,7 @@ def enviar_tarjeta(sender, created, instance, **kwargs):
             record_url = f"{URL_DELETE_CARD}?format=json"
             full_url = f"{base_url}{record_url}"
 
-            print("Se borra la tarjeta para agregar otra")
+            print("Se borra la tarjeta")
 
             payload = {         
                 "CardInfoDelCond" : {
@@ -896,6 +895,40 @@ def enviar_tarjeta(sender, created, instance, **kwargs):
                     raise Exception("Error modificando tarjeta al dispositivo: {}".format(response.text))
             else:
                 raise Exception("Error borrando tarjeta para reemplazar en dispositivo: {}".format(response.text))
+    else:
+        subject_schedules = instance.subject.all()
+        ips = []
+
+        for subject_schedule in subject_schedules:
+            device = subject_schedule.device
+            if device and device.is_active:  
+                ips.append(device.ip)
+
+        for ip_address in ips:
+
+            base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+            record_url = f"{URL_DELETE_CARD}?format=json"
+            full_url = f"{base_url}{record_url}"
+
+            print("Se quita la tarjeta")
+
+            payload = {         
+                "CardInfoDelCond" : {
+                    "EmployeeNoList" : [{
+                    "employeeNo": str(instance.user_device_id)
+                    }]
+                }
+            }
+
+            response = requests.request("PUT", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            if response.status_code == 200:
+                print("Tarjeta borrada")
+            else:
+                raise Exception("Error borrando tarjeta en dispositivo: {}".format(response.text))
+
+
+        
 
 
         
