@@ -60,15 +60,16 @@ VERIFYMODE = (('cardOrFace', 'Tarjeta o cara'),
               ('face', 'Cara'))
 
 class Device(models.Model):
-    device = models.CharField(unique=True, max_length=50, null=True)
-    ip = models.CharField(unique=True, max_length=50, null=True)
-    door_port = models.IntegerField(null=True)
+
+    device = models.CharField(unique=True, max_length=50, null=False)
+    ip = models.CharField(unique=True, max_length=50, null=False)
+    door_port = models.IntegerField(null=False)
     date_purchased = models.DateField(editable=True, null=True)
-    is_active = models.BooleanField(default=False, null=True)
-    is_synchronized = models.BooleanField(default=True, null=True)
-    user = models.CharField(max_length=50, null=True)
-    password = encrypt(models.CharField(max_length=128, null=True))
-    massive_opening = models.BooleanField(null=True)
+    is_active = models.BooleanField(null=True)
+    is_synchronized = models.BooleanField(null=True)
+    user = models.CharField(max_length=50, null=False)
+    password = encrypt(models.CharField(max_length=128, null=False))
+    massive_opening = models.BooleanField(null=False)
    
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -156,7 +157,7 @@ class UserTypes(models.Model):
 class UserProfile(models.Model):
     choices = [(None, '-------'), ('Sí', 'Sí'), ('No', 'No')]
 
-    device = models.ForeignKey(Device, on_delete=models.CASCADE, null=False, verbose_name="Dispositivo")
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Dispositivo")
     first_name = models.CharField(max_length=100, verbose_name="Nombre")
     last_name = models.CharField(max_length=100, null=True, blank=True, verbose_name="Apellido")
     dni = models.CharField(max_length=100, unique=True, verbose_name="DNI")
@@ -169,7 +170,7 @@ class UserProfile(models.Model):
     end_time = models.DateTimeField(editable=True, null=True, blank=True, verbose_name="Fecha final de habilitación")
     is_staff = models.CharField(max_length=10, choices=choices, default=None, verbose_name="¿Usuario administrador?")
     profile_type = models.CharField(default='normal', max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario del dipositivo")
-    file_image = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen", null=True)
+    file_image = models.FileField(upload_to='user_profile_api/images/', null=True, blank=True, verbose_name="Imagen")
     user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Tipo de usuario dentro de la institución")
 
     def __str__(self):
@@ -181,6 +182,15 @@ class UserProfile(models.Model):
         verbose_name_plural = "Usuarios"
 
     USERNAME_FIELD = 'email'
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            existing_ids = set(UserProfile.objects.values_list('id', flat=True))
+            next_id = 1
+            while next_id in existing_ids:
+                next_id += 1
+            self.id = next_id
+        super().save(*args, **kwargs)
 
 
 class UserProfileStudent(models.Model):
@@ -198,6 +208,15 @@ class UserProfileStudent(models.Model):
     class Meta:
         verbose_name = "Alumno"
         verbose_name_plural = "Alumnos"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            existing_ids = set(UserProfileStudent.objects.values_list('id', flat=True))
+            next_id = 1
+            while next_id in existing_ids:
+                next_id += 1
+            self.id = next_id
+        super().save(*args, **kwargs)
 
 class UserProfileMaintenance(models.Model):
     choices = [(None, '-------'), ('Sí', 'Sí'), ('No', 'No')]
@@ -227,6 +246,15 @@ class UserProfileMaintenance(models.Model):
 
     class Meta:
         verbose_name = "Personal de Mantenimiento"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            existing_ids = set(UserProfileMaintenance.objects.values_list('id', flat=True))
+            next_id = 1
+            while next_id in existing_ids:
+                next_id += 1
+            self.id = next_id
+        super().save(*args, **kwargs)
 
 class Room(models.Model):
     room = models.CharField(max_length=100, null=True)

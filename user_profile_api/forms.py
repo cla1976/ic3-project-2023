@@ -11,7 +11,7 @@ class DeviceForm(forms.ModelForm):
 
     class Meta:
         model = Device
-        fields = ['device', 'ip', 'door_port', 'date_purchased', 'is_active', 'is_synchronized', 'user', 'password', 'massive_opening']
+        fields = '__all__'
 
 class UserProfileForm(forms.ModelForm):
     class Meta:
@@ -29,7 +29,12 @@ class UserProfileForm(forms.ModelForm):
         not_required_fields = ['begin_time', 'end_time']  
         for field_name in not_required_fields:
             self.fields[field_name].required = False
+        
+        if self.instance.pk:
+            self.fields['dni'].widget.attrs['readonly'] = True
 
+        if self.instance.user_type is not None:
+            self.fields['user_type'].disabled = True
     
     def clean(self):
         cleaned_data = super().clean()

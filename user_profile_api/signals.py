@@ -18,16 +18,15 @@ from user_profile_api.urls_services import (
     URL_COUNT_USER,
     URL_RECORD_IMAGE,
     URL_UserRightWeekPlanCfg,
+    URL_UserRightPlanTemplate,
     URL_FaceDataRecord,
 )
 from users_admin.settings import DEVICE_UUID
 from requests.auth import HTTPDigestAuth
-from user_profile_api.models import UserProfileStudent, SubjectSchedule, Device, UserTypes, UserProfile
-# from user_profile_api.services import get_default_user_device_id
+from user_profile_api.models import UserProfileStudent, SubjectSchedule, Device, UserTypes, UserProfile, UserProfileMaintenance 
 from django.db.models import F
 from unidecode import unidecode
 from requests.auth import HTTPDigestAuth
-from .models import UserProfile
 
 # Archivo de señales. Se activan funcionalidades que están ligadas al panel de administración
 # que trae por defecto Django basandose en detección de cambios en los modelos 
@@ -900,10 +899,18 @@ def create_default_usertypes():
 def post_migrate_receiver(sender, **kwargs):
     create_default_usertypes()
 
+# Variable global que se utiliza para manejar la modificación de usuarios del tipo mantenimiento
+
+modified = False
+
+# Array que tiene los días de la semana, se utilizan en distintas señales y funciones
+days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
 # Función encargada de enviar los datos de los usuarios creados o modificados al dispositivo remoto
 
 @receiver(post_save, sender=UserProfile)
 def post_save_user_profile(sender, instance, created, **kwargs):
+    global modified
     instance.last_updated = timezone.now()
     device = instance.device
     ip = device.ip
@@ -911,20 +918,22 @@ def post_save_user_profile(sender, instance, created, **kwargs):
     uuid = settings.DEVICE_UUID
     username = device.user
     password = device.get_password()
+    auth = HTTPDigestAuth(username, password)
+    headers = {'Content-Type': 'application/json'}
     if instance.is_active == 'Sí':
         is_active = True
     else:
         is_active = False
-
     if instance.is_staff == 'Sí':
         is_staff = True
     else:
         is_staff = False
 
     if created:
+        if instance.user_type.user_type == 'Mantenimiento':
+            return
         url = f"http://{ip}:{door_port}{URL_RECORD_USER}?format=json&devIndex={uuid}"
-        headers = {'Content-Type': 'application/json'}
-        print(url)
+        #print(url)
 
         if instance.begin_time == None and instance.end_time == None:
             data = {
@@ -961,63 +970,60 @@ def post_save_user_profile(sender, instance, created, **kwargs):
             }
             print(data)
 
-        auth = HTTPDigestAuth(username, password)
         response = requests.post(url, data=json.dumps(data), headers=headers, auth=auth)
-
         if response.status_code == 200:
             print('Usuario agregado correctamente al dispositivo remoto.')
         else:
             print('Error al agregar el usuario al dispositivo remoto. Código de estado:', response.status_code)
             print('Respuesta del servidor:', response.text)
+    else:
+        if instance.user_type.user_type == 'Mantenimiento':
+            modified = True
+        else: 
+            url = f"http://{ip}:{door_port}{URL_MODIFY_USER}?format=json&devIndex={uuid}"
+            #print(url)
 
-    else: 
-        url = f"http://{ip}:{door_port}{URL_MODIFY_USER}?format=json&devIndex={uuid}"
-        headers = {'Content-Type': 'application/json'}
-        print(url)
-
-        if instance.begin_time == None and instance.end_time == None:
-            data = {
-            "UserInfo":
-                {
-                    "employeeNo": str(instance.dni),
-                    "name": str(instance.first_name + " " + instance.last_name),
-                    "userType": instance.profile_type,
-                    "gender": instance.gender,
-                    "Valid": {
-                        "enable": is_active
-                    }, 
-                    "localUIRight": is_staff
+            if instance.begin_time == None and instance.end_time == None:
+                data = {
+                "UserInfo":
+                    {
+                        "employeeNo": str(instance.dni),
+                        "name": str(instance.first_name + " " + instance.last_name),
+                        "userType": instance.profile_type,
+                        "gender": instance.gender,
+                        "Valid": {
+                            "enable": is_active
+                        }, 
+                        "localUIRight": is_staff
+                    }
                 }
-            }
-            print(data)
-        else:
-            begin_time_str = instance.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.begin_time else None
-            end_time_str = instance.end_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.end_time else None
-            data = {
-            "UserInfo":
-                {
-                    "employeeNo": str(instance.dni),
-                    "name": str(instance.first_name + " " + instance.last_name),
-                    "userType": instance.profile_type,
-                    "gender": instance.gender,
-                    "Valid": {
-                        "enable": is_active, 
-                        "beginTime": begin_time_str,
-                        "endTime": end_time_str,
-                    }, 
-                    "localUIRight": is_staff
+                print(data)
+            else:
+                begin_time_str = instance.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.begin_time else None
+                end_time_str = instance.end_time.strftime("%Y-%m-%dT%H:%M:%S") if instance.end_time else None
+                data = {
+                "UserInfo":
+                    {
+                        "employeeNo": str(instance.dni),
+                        "name": str(instance.first_name + " " + instance.last_name),
+                        "userType": instance.profile_type,
+                        "gender": instance.gender,
+                        "Valid": {
+                            "enable": is_active, 
+                            "beginTime": begin_time_str,
+                            "endTime": end_time_str,
+                        }, 
+                        "localUIRight": is_staff
+                    }
                 }
-            }
-            print(data)
+                print(data)
 
-        auth = HTTPDigestAuth(username, password)
-        response = requests.put(url, data=json.dumps(data), headers=headers, auth=auth)
-        
-        if response.status_code == 200:
-            print('Usuario modificado correctamente.')
-        else:
-            print('Error al modificar el usuario en el dispositivo remoto. Código de estado:', response.status_code)
-            print('Respuesta del servidor:', response.text)
+            response = requests.put(url, data=json.dumps(data), headers=headers, auth=auth)
+            if response.status_code == 200:
+                print('Usuario modificado correctamente.')
+            else:
+                print('Error al modificar el usuario en el dispositivo remoto. Código de estado:', response.status_code)
+                print('Respuesta del servidor:', response.text)
 
 # Función encargada de enviar los datos de eliminación de usuarios
             
@@ -1032,7 +1038,7 @@ def post_delete_userprofile(sender, instance, **kwargs):
 
     url = f"http://{ip}:{door_port}{URL_DELETE_USER}?format=json&devIndex={uuid}"
     headers = {'Content-Type': 'application/json'}
-    print(url)
+    #print(url)
 
     data = {
         "UserInfoDetail": {
@@ -1051,3 +1057,334 @@ def post_delete_userprofile(sender, instance, **kwargs):
     else:
         print('Error al eliminar el usuario del dispositivo remoto. Código de estado:', response.status_code)
         print('Respuesta del servidor:', response.text)
+
+# Función encargada de registrar usuarios del tipo mantenimiento. Es similar a la anterior pero se 
+# deben configurar los JSON para habilitar el usuario en ciertos horarios
+        
+@receiver(post_save, sender=UserProfileMaintenance)
+def post_save_user_profile_maintenance(sender, instance, created,**kwargs):
+    global modified
+    global days
+    id = instance.id + 64
+
+    user_profile = instance.user_profile
+    if user_profile.is_active == 'Sí':
+        is_active = True
+    else:
+        is_active = False
+    if user_profile.is_staff == 'Sí':
+        is_staff = True
+    else:
+        is_staff = False
+    
+    device = user_profile.device
+    ip = device.ip
+    door_port = device.door_port
+    uuid = settings.DEVICE_UUID
+    username = device.user
+    password = device.get_password()
+    auth = HTTPDigestAuth(username, password)
+    headers = {'Content-Type': 'application/json'}
+
+    if created:
+        if modified == True:
+            modify_user_maintenence(instance, id)
+            modified = False
+        else:
+            week_plan_cfg = [{
+                'week': day.capitalize(),
+                'id': 1,
+                'enable': getattr(instance, day) == 'Sí',
+                'TimeSegment': {
+                    'beginTime': getattr(instance, f'{day}_time_begin').strftime("%H:%M:%S"),
+                    'endTime': getattr(instance, f'{day}_time_end').strftime("%H:%M:%S")
+                }
+            } for day in days if getattr(instance, day) == 'Sí']
+            
+            data_1 = {
+                "UserRightWeekPlanCfg": {
+                    "planNo": "1",
+                    "enable": True,
+                    "WeekPlanCfg": week_plan_cfg
+                }
+            }
+            print(data_1)
+
+            url_1 = f"http://{ip}:{door_port}{URL_UserRightWeekPlanCfg}{id}?format=json&devIndex={uuid}"
+            #print(url_1)
+            response_1 = requests.put(url_1, data=json.dumps(data_1), headers=headers, auth=auth)
+            
+            if response_1.status_code == 200:
+                print('Plan semanal creado con éxito')
+            else:
+                print('Error crear al plan semanal. Código de estado:', response_1.status_code)
+                print('Respuesta del servidor:', response_1.text)
+
+            data_2 = {
+                "UserRightPlanTemplate": {
+                    "templateNo": str(id),
+                    "enable": True,
+                    "templateName": f"Usuario mantenimiento n° {id - 64}",
+                    "weekPlanNo": 1,
+                    "holidayGroupNo": ""
+                }
+            }
+
+            url_2 = f"http://{ip}:{door_port}{URL_UserRightPlanTemplate}{id}?format=json&devIndex={uuid}"
+            #print(url_2)
+            response_2 = requests.put(url_2, data=json.dumps(data_2), headers=headers, auth=auth)
+            
+            if response_2.status_code == 200:
+                print('Template de horarios creado con éxito')
+            else:
+                print('Error al crear el template de horarios. Código de estado:', response_2.status_code)
+                print('Respuesta del servidor:', response_2.text)
+
+            url_3 = f"http://{ip}:{door_port}{URL_RECORD_USER}?format=json&devIndex={uuid}"
+            #print(url_3)
+
+            if user_profile.begin_time == None and user_profile.end_time == None:
+                data_3 = {
+                "UserInfo":
+                    {
+                        "employeeNo": str(user_profile.dni),
+                        "name": str(user_profile.first_name + " " + user_profile.last_name),
+                        "userType": user_profile.profile_type,
+                        "gender": user_profile.gender,
+                        "Valid": {
+                            "enable": is_active
+                        }, 
+                        "doorRight": "1",
+                        "RightPlan" : [{
+                            "doorNo": 1,
+                            "planTemplateNo": str(id)
+                        }],
+                        "localUIRight": is_staff
+                    }
+                }
+                print(data_3)
+            else:
+                begin_time_str = user_profile.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if user_profile.begin_time else None
+                end_time_str = user_profile.end_time.strftime("%Y-%m-%dT%H:%M:%S") if user_profile.end_time else None
+                data_3 = {
+                "UserInfo":
+                    {
+                        "employeeNo": str(user_profile.dni),
+                        "name": str(user_profile.first_name + " " + user_profile.last_name),
+                        "userType": user_profile.profile_type,
+                        "gender": user_profile.gender,
+                        "Valid": {
+                            "enable": is_active, 
+                            "beginTime": begin_time_str,
+                            "endTime": end_time_str,
+                        },
+                        "doorRight": "1",
+                        "RightPlan" : [{
+                            "doorNo": 1,
+                            "planTemplateNo": str(id)
+                        }], 
+                        "localUIRight": is_staff
+                    }
+                }
+                print(data_3)
+
+            response_3 = requests.post(url_3, data=json.dumps(data_3), headers=headers, auth=auth)
+            if response_3.status_code == 200:
+                print('Usuario agregado correctamente al dispositivo remoto.')
+            else:
+                print('Error al agregar el usuario al dispositivo remoto. Código de estado:', response_3.status_code)
+                print('Respuesta del servidor:', response_3.text)
+    else:
+        modify_user_maintenence(instance, id)
+
+# Función encargada de la modificación de los usurios del tipo mantenimiento. Debido a que se tenía que
+# utilizar más de una vez se decició empaquetar el código en una función y llamarla cuando sea necesario.
+
+def modify_user_maintenence(instance, id):
+    global days
+    #days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+    user_profile = instance.user_profile
+    if user_profile.is_active == 'Sí':
+        is_active = True
+    else:
+        is_active = False
+    if user_profile.is_staff == 'Sí':
+        is_staff = True
+    else:
+        is_staff = False        
+
+    device = user_profile.device
+    ip = device.ip
+    door_port = device.door_port
+    uuid = settings.DEVICE_UUID
+    username = device.user
+    password = device.get_password()
+    auth = HTTPDigestAuth(username, password)
+    headers = {'Content-Type': 'application/json'}
+    week_plan_cfg = [{
+            'week': day.capitalize(),
+            'id': 1,
+            'enable': getattr(instance, day) == 'Sí',
+            'TimeSegment': {
+                'beginTime': getattr(instance, f'{day}_time_begin').strftime("%H:%M:%S"),
+                'endTime': getattr(instance, f'{day}_time_end').strftime("%H:%M:%S")
+            }
+        } for day in days if getattr(instance, day) == 'Sí']
+        
+    data_1 = {
+        "UserRightWeekPlanCfg": {
+            "planNo": "1",
+            "enable": True,
+            "WeekPlanCfg": week_plan_cfg
+        }
+    }
+    print(data_1)
+
+    url_1 = f"http://{ip}:{door_port}{URL_UserRightWeekPlanCfg}{id}?format=json&devIndex={uuid}"
+    #print(url_1)
+    response_1 = requests.put(url_1, data=json.dumps(data_1), headers=headers, auth=auth)
+    
+    if response_1.status_code == 200:
+        print('Plan semanal creado con éxito')
+    else:
+        print('Error crear plan semanal. Código de estado:', response_1.status_code)
+        print('Respuesta del servidor:', response_1.text)
+
+    data_2 = {
+        "UserRightPlanTemplate": {
+            "templateNo": str(id),
+            "enable": True,
+            "templateName": f"Usuario mantenimiento n° {id - 64}",
+            "weekPlanNo": 1,
+            "holidayGroupNo": ""
+        }
+    }
+    print(data_2)
+
+    url_2 = f"http://{ip}:{door_port}{URL_UserRightPlanTemplate}{id}?format=json&devIndex={uuid}"
+    #print(url_2)
+    response_2 = requests.put(url_2, data=json.dumps(data_2), headers=headers, auth=auth)
+    
+    if response_2.status_code == 200:
+        print('Template de horarios creado con éxito')
+    else:
+        print('Error crear el template de horarios. Código de estado:', response_2.status_code)
+        print('Respuesta del servidor:', response_2.text)
+
+    url_3 = f"http://{ip}:{door_port}{URL_MODIFY_USER}?format=json&devIndex={uuid}"
+    #print(url_3)
+    if user_profile.begin_time == None and user_profile.end_time == None:
+        data_3 = {
+        "UserInfo":
+            {
+                "employeeNo": str(user_profile.dni),
+                "name": str(user_profile.first_name + " " + user_profile.last_name),
+                "userType": user_profile.profile_type,
+                "gender": user_profile.gender,
+                "Valid": {
+                    "enable": is_active
+                }, 
+                "doorRight": "1",
+                "RightPlan" : [{
+                    "doorNo": 1,
+                    "planTemplateNo": str(id)
+                }],
+                "localUIRight": is_staff
+            }
+        }
+        print(data_3)
+    else:
+        begin_time_str = user_profile.begin_time.strftime("%Y-%m-%dT%H:%M:%S") if user_profile.begin_time else None
+        end_time_str = user_profile.end_time.strftime("%Y-%m-%dT%H:%M:%S") if user_profile.end_time else None
+        data_3 = {
+        "UserInfo":
+            {
+                "employeeNo": str(user_profile.dni),
+                "name": str(user_profile.first_name + " " + user_profile.last_name),
+                "userType": user_profile.profile_type,
+                "gender": user_profile.gender,
+                "Valid": {
+                    "enable": is_active, 
+                    "beginTime": begin_time_str,
+                    "endTime": end_time_str,
+                },
+                "doorRight": "1",
+                "RightPlan" : [{
+                    "doorNo": 1,
+                    "planTemplateNo": str(id)
+                }], 
+                "localUIRight": is_staff
+            }
+        }
+        print(data_3)
+
+    response_3 = requests.put(url_3, data=json.dumps(data_3), headers=headers, auth=auth)
+    if response_3.status_code == 200:
+        print('Usuario modificado correctamente.')
+    else:
+        print('Error al modificar el usuario en el dispositivo remoto. Código de estado:', response_3.status_code)
+        print('Respuesta del servidor:', response_3.text)
+
+@receiver(pre_delete, sender=UserProfileMaintenance)
+def pre_delete_user_profile_maintenance(sender, instance,**kwargs):
+    global days
+    id = instance.id + 64
+    
+    user_profile = instance.user_profile
+    device = user_profile.device
+    ip = device.ip
+    door_port = device.door_port
+    uuid = settings.DEVICE_UUID
+    username = device.user
+    password = device.get_password()
+    auth = HTTPDigestAuth(username, password)
+    headers = {'Content-Type': 'application/json'}
+
+    week_plan_cfg = [{
+        'week': day.capitalize(),
+        'id': 1,
+        'enable': False,
+        'TimeSegment': {
+            'beginTime': "00:00:00",
+            'endTime': "00:00:00"
+        }
+    } for day in days if getattr(instance, day) == 'Sí']
+
+    data_1 = {
+        "UserRightWeekPlanCfg": {
+            "planNo": "1",
+            "enable": False,
+            "WeekPlanCfg": week_plan_cfg
+        }
+    }
+
+    url_1 = f"http://{ip}:{door_port}{URL_UserRightWeekPlanCfg}{id}?format=json&devIndex={uuid}"
+    #print(url_1)
+    response_1 = requests.put(url_1, data=json.dumps(data_1), headers=headers, auth=auth)
+    
+    if response_1.status_code == 200:
+        print('Plan semanal limpiado con éxito')
+    else:
+        print('Error al limpiar plan semanal. Código de estado:', response_1.status_code)
+        print('Respuesta del servidor:', response_1.text)
+
+    data_2 = {
+                "UserRightPlanTemplate": {
+                    "templateNo": str(id),
+                    "enable": False,
+                    "templateName": "",
+                    "weekPlanNo": 1,
+                    "holidayGroupNo": ""
+                }
+            }
+
+    url_2 = f"http://{ip}:{door_port}{URL_UserRightPlanTemplate}{id}?format=json&devIndex={uuid}"
+    #print(url_2)
+    response_2 = requests.put(url_2, data=json.dumps(data_2), headers=headers, auth=auth)
+    
+    if response_2.status_code == 200:
+        print('Template de horarios limpiado con éxito')
+    else:
+        print('Error al limpiar el template de horarios. Código de estado:', response_2.status_code)
+        print('Respuesta del servidor:', response_2.text)
