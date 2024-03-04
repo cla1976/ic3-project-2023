@@ -20,7 +20,7 @@ class UserProfileMaintenanceInline(admin.StackedInline):
 class ManageUser(admin.ModelAdmin):
     inlines = [UserProfileStudentInline, UserProfileMaintenanceInline]
     form = UserProfileForm
-    list_display=('dni', 'first_name', 'last_name', 'email', 'phone','user_type')
+    list_display=('device', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type')
     ordering=('first_name','last_name')
     search_fields= ('dni', 'email', 'phone', 'first_name', 'last_name')
     list_per_page=50
