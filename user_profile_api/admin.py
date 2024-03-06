@@ -1,5 +1,5 @@
 from django.contrib import admin
-from user_profile_api.models import UserProfile, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule
+from user_profile_api.models import UserProfile, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule, EventsDescription
 from django.utils import timezone
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -90,3 +90,9 @@ class ManageDevice(admin.ModelAdmin):
     search_fields= ('id','device','date_purchased','user')
     list_per_page=10
   
+@admin.register(EventsDescription)
+class ManageEventsDescription(admin.ModelAdmin):
+    list_display=('number', 'description')
+    ordering=('number',)
+    search_fields= ('nummer','description')
+    list_per_page=10

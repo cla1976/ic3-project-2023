@@ -15,13 +15,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from user_profile_api.views import video, show_doors, show_doors_devices, video_open_door, show_users_devices, show_users, get_users, show_events, show_events_devices, GetEventsView, GetDoorsView, schedule_career, schedule_career_home, schedule_career_home_year
+from user_profile_api.views import video, show_doors, show_doors_devices, video_open_door, show_users_devices, show_users, get_users, show_events, show_events_devices, GetEventsView, GetDoorsView, schedule_career, schedule_career_home, schedule_career_home_year, enviar_telegram, enviar_telegram_usuarios
 urlpatterns = [
     path('video/open_door/<str:device>/', video_open_door, name='video_open_door'),
     path('show_users/<str:device>/get_users/', get_users, name='get_users'),
     path('show_events/<str:device>/get_events/', GetEventsView.as_view(), name='get_events'),
     path('show_doors/<str:device>/show_doors/', GetDoorsView.as_view(), name='get_doors'),
-
     path('horario/<str:career>/<str:year>', schedule_career, name='schedule_career'),
     path('horario/<str:career>/', schedule_career_home_year, name='schedule_career_home_year'),
     path('horario/', schedule_career_home, name='schedule_career_home'),
@@ -32,5 +31,7 @@ urlpatterns = [
     path('show_events/', show_events_devices, name='show_events_devices'),
     path('show_doors/<str:device>/', show_doors, name='show_doors'),
     path('show_doors/', show_doors_devices, name='show_doors_devices'),
+    path('enviar_telegram/', enviar_telegram, name='enviar_telegram'),
+    path('enviar_telegram_usuarios/', enviar_telegram_usuarios, name='enviar_telegram_usuarios'),
     path('', admin.site.urls)
 ]

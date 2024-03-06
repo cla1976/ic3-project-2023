@@ -25,13 +25,17 @@ from user_profile_api.urls_services import (
     URL_DOOR_LOCKTYPE,
 )
 import datetime
+from django.utils import timezone
 import json, base64
 from django.http import JsonResponse
 import hashlib
-from .models import SubjectSchedule, Device
+from .models import EventsDescription, SubjectSchedule, Device
 from django.db.models import F
 import itertools
 import subprocess
+from .models import UserProfile, EventsDescription
+from django.http import HttpResponseBadRequest
+from datetime import timedelta
 
 def check_admin(user):
    return user.is_superuser
@@ -195,8 +199,6 @@ def show_doors(request, device):
     except requests.exceptions.RequestException as e:
         print(f'Error de conexión: {e}')
 
-
-
 def get_users(request, device):
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
     base_url = "http://" + ip + ":85"
@@ -221,6 +223,17 @@ def get_users(request, device):
 class GetEventsView(TemplateView):
     template_name = 'custom/show_events/show_events.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        device = self.kwargs.get('device')
+        context['device'] = device
+        context['users'] = UserProfile.objects.filter(device=device)
+
+        # Imprime el contenido de context['users'] en la terminal
+        print("Usuarios en contexto:", context['users'])
+
+        return context
+    
     def post(self, request, device, *args, **kwargs):
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
         base_url = "http://" + ip + ":85"
@@ -235,9 +248,10 @@ class GetEventsView(TemplateView):
 
         if grupoevento != "":
             grupoevento = int(grupoevento)
+        
         if tipoevento != "":
             tipoevento = int(tipoevento)
-
+        
         print("Datos: ")
         print(usuario)
         print(grupoevento)
@@ -245,7 +259,7 @@ class GetEventsView(TemplateView):
             "AcsEventCond": {
                 "searchID": "1",
                 "searchResultPosition": 0,
-                "maxResults": 500,
+                "maxResults": 1000,
                 "major": grupoevento,
                 "minor": tipoevento,
                 "startTime": desde,
@@ -258,16 +272,32 @@ class GetEventsView(TemplateView):
         }
 
         payload_json = json.dumps(payload)
+
         print(payload_json)
+
         response = requests.post(full_url, headers=headers, data=payload_json, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
         events = response.json()
         print(response.text)
+ 
         if events['AcsEvent']['responseStatusStrg'] == 'NO MATCH':
             return JsonResponse({})
         else:
-            return JsonResponse({'events': events['AcsEvent']['InfoList']})
+            # Obtener los eventos como un diccionario
+            events = events['AcsEvent']['InfoList']
 
-
+            # Agregar la descripción del minor a cada evento
+            for event in events:
+                major = event.get('major')
+                minor = event.get('minor')
+                event['minor_description'] = EventsDescription.get_minor_description(major, minor)
+                
+            # Devolver los eventos actualizados como una respuesta JSON
+            return JsonResponse({'events': events})
+        #if events['AcsEvent']['responseStatusStrg'] == 'NO MATCH':
+        #    return JsonResponse({})
+        #else:
+        #    return JsonResponse({'events': events['AcsEvent']['InfoList']})
+    
 @user_passes_test(check_admin)
 def show_doors_devices(request):
     dispositivos = Device.objects.values_list('device', flat=True).distinct()
@@ -337,5 +367,113 @@ def show_events_devices(request):
 @user_passes_test(check_admin)
 def show_events(request, device):
     print(device)
-    lista_device = {'device': device}
-    return render(request, "custom/show_events/show_events.html", lista_device)
+
+    # Obtén todos los usuarios de UserProfile
+    #users = UserProfile.objects.all()
+    # Llama a la vista get_users para obtener la respuesta de los usuarios
+    users_response = get_users(request, device)
+    
+    # Obtén el contenido de la respuesta en bytes
+    response_content = users_response.content
+    
+    # Convierte el contenido en un diccionario JSON
+    try:
+        response_data = json.loads(response_content)
+        # Obtén los datos de los usuarios del diccionario JSON
+        users_data = response_data.get('users', [])
+    except (json.JSONDecodeError, AttributeError) as e:
+        # Maneja los errores de decodificación JSON o atributo inválido
+        print(f"Error al decodificar JSON: {e}")
+        users_data = []
+
+    # Obtén todas las descripciones de eventos
+    #event_descriptions = EventsDescription.objects.all()
+    event_descriptions = EventsDescription.objects.all().order_by('number')
+
+    # Define EVENT_CHOICES aquí o importa desde donde sea necesario
+    EVENT_CHOICES = [
+        ('0', 'All Groups Events'),
+        ('1', 'Event Alarm'),
+        ('2', 'Device Exception'),
+        ('3', 'Device Operation'),
+        ('5', 'Device Event'),
+        ]
+
+
+    # Obtén la fecha actual
+    current_date = timezone.now()
+    three_months_ago = current_date - timedelta(days=3*30)  # Asumiendo un promedio de 30 días por mes
+
+    three_months_ago_formatted = three_months_ago.strftime('%Y-%m-%dT%H:%M')
+    # Dentro de tu vista
+    current_date2 = timezone.now().strftime('%Y-%m-%dT%H:%M')
+    #current_date1 = timezone.now().replace(hour=0, minute=0).strftime('%Y-%m-%dT%H:%M')
+    current_date1 = three_months_ago.strftime('%Y-%m-%dT%H:%M')
+
+    context = {
+        'device': device,
+        'users': users_data,
+        'event_descriptions': event_descriptions,
+        'EVENT_CHOICES': EVENT_CHOICES,  # Agrega EVENT_CHOICES al contexto
+        'current_date1' : current_date1,
+        'current_date2' : current_date2,
+    }
+    # Renderiza la plantilla con el nuevo contexto
+    return render(request, "custom/show_events/show_events.html", context)
+
+def enviar_telegram(request): 
+    if request.method == 'POST':
+        print("ACALLL")
+        bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
+        chat_id = '1309708511'
+        mensaje = "Copia de seguridad del historial de eventos"
+        
+        # Verificar si el campo 'archivo' está presente en la solicitud POST
+        if 'archivo' not in request.FILES:
+            return HttpResponseBadRequest("El campo 'archivo' no está presente en la solicitud.")
+        
+        # Obtener el archivo enviado en la solicitud
+        archivo = request.FILES['archivo']
+
+        # Construir la URL de la API de Telegram para enviar archivos
+        url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+
+        # Crear los datos de la solicitud
+        data = {'chat_id': chat_id, 'caption': mensaje}
+
+        # Agregar el archivo a los datos de la solicitud
+        files = {'document': archivo}
+
+        # Enviar la solicitud a la API de Telegram
+        response = requests.post(url, data=data, files=files)
+
+        if response.status_code == 200:
+            return HttpResponse("Mensaje y archivo enviados con éxito.")
+        else:
+            return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
+
+def enviar_telegram_usuarios(request): 
+    if request.method == 'POST':
+        bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
+        chat_id = '1309708511'
+        mensaje = "Copia de seguridad de los usuarios del dispositivo"
+        
+        # Obtener el archivo enviado en la solicitud
+        archivo = request.FILES['archivo']
+
+        # Construir la URL de la API de Telegram para enviar archivos
+        url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+
+        # Crear los datos de la solicitud
+        data = {'chat_id': chat_id, 'caption': mensaje}
+
+        # Agregar el archivo a los datos de la solicitud
+        files = {'document': archivo}
+
+        # Enviar la solicitud a la API de Telegram
+        response = requests.post(url, data=data, files=files)
+
+        if response.status_code == 200:
+            return HttpResponse("Mensaje y archivo enviados con éxito.")
+        else:
+            return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")

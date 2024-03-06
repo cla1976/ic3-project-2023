@@ -7,127 +7,416 @@
     <script src="{% static 'custom/tabulator-master/dist/js/tabulator.min.js' %}"></script>
     <link href="{% static 'custom/flatpickr/flatpickr.min.css' %}" rel="stylesheet">
     <script src="{% static 'custom/flatpickr/flatpickr.min.js' %}"></script>
-
+    <script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/promise-polyfill"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.0/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.16/jspdf.plugin.autotable.min.js"></script>
   {% endblock %}
 
+  <script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
 
+  <style>
+    #my-form {
+      max-width: 1500px;
+      margin: 0 auto;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    .form-group.col-12 {
+      text-align: center;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .form-group input {
+      display: block;
+      width: 100%;
+      padding: 5px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
 
+  </style>
+    <style>
+      /* Añade estos estilos para alinear los botones según tus preferencias */
+      .btn-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+    
+      /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
+      .btn-primary {
+        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+      }
+    </style>
+    
+    <style>
+      /* Añade estos estilos para alinear los botones según tus preferencias */
+      .btn-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+    
+      /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
+      .btn-primary {
+        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+      }
+    </style>
+    
+    <style>
+      /* Añade estos estilos para alinear los botones según tus preferencias */
+      .btn-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+    
+      /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
+      .btn-primary {
+        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+      }
+    </style>
+    
+    <style>
+      /* Añade estos estilos para alinear los botones según tus preferencias */
+      .btn-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        margin-right: 10px; /* Ajusta el margen derecho según tus preferencias */
+      }
+    
+      /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
+      .btn-primary {
+        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+      }
+    </style>
 
-<script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
-
-
-<style>
-  #my-form {
-    max-width: 500px;
-    margin: 0 auto;
-  }
-  .form-group {
-    margin-bottom: 10px;
-  }
-  .form-group label {
-    display: block;
-    margin-bottom: 5px;
-  }
-  .form-group input {
-    display: block;
-    width: 100%;
-    padding: 5px;
-    font-size: 16px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-  }
-</style>
-
-<div id="form-container">
-  <form id="my-form">
-    {% csrf_token %}
-    <div class="form-group">
-      <label for="usuario">Usuario num.</label>
-      <input type="text" name="usuario" id="usuario">
+<div class="container text-center">
+  <div class="row">
+    <div class="col">
+      <h3>Dispositivo: {{ device }}</h3>
     </div>
-    <div class="form-group">
-      <label for="grupoevento">Grupo de evento</label>
-      <input type="text" name="grupoevento" id="grupoevento">
-    </div>
-    <div class="form-group">
-      <label for="tipoevento">Tipo de evento</label>
-      <input type="text" name="tipoevento" id="tipoevento">
-    </div>
-    <div class="form-group">
-      <label for="desde">Desde</label>
-      <input type="text" name="desde" id="desde" data-input="datetime-local" data-enable-time="true">
-    </div>
-    <div class="form-group">
-      <label for="hasta">Hasta</label>
-      <input type="text" name="hasta" id="hasta" data-input="datetime-local" data-enable-time="true">
-    </div>
-  </form>
+  </div>
 </div>
 
+<div class="container-fluid">
+  <div class="row">
+    <form id="my-form" class="col-12 w-100">
+      {% csrf_token %}
+      <div class="form-row">
+        <div class="form-group col-md-2">
+          <label for="select-usuario">Usuario num.</label>
+          <select name="select-usuario" id="select-usuario" class="form-control">
+            <option value="">Selecciona un usuario</option>
+            {% for user in users %}
+              <option value="{{ user.employeeNoString }}">{{ user.name }} {{ user.employeeNoString }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-2">
+          <label for="grupoevento">Grupo de evento</label>
+          <select name="grupoevento" id="grupoevento" class="form-control">
+            {% for choice in EVENT_CHOICES %}
+              <option value="{{ choice.0 }}">{{ choice.0 }} - {{ choice.1 }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-2">
+          <label for="tipoevento">Tipo de evento</label>
+          <select name="tipoevento" id="tipoevento" class="form-control">
+            {% for event_description in event_descriptions %}
+              <option value="{{ event_description.number }}">{{ event_description.major }} - {{ event_description.number }} - {{ event_description.description }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-2">
+          <label for="desde">Desde</label>
+          <input type="datetime-local" class="form-control" name="desde" id="desde" value="{{ current_date1 }}" data-enable-time="true">
+        </div>
+        <div class="form-group col-md-2">
+          <label for="hasta">Hasta</label>
+          <input type="datetime-local" class="form-control" name="hasta" id="hasta" value="{{ current_date2 }}" data-enable-time="true">
+        </div>
+        <div class="form-group col-md-2">
+          <label for="button">.</label>
+          <button id="my-button" type="submit" class="btn btn-primary">Enviar</button>
+        </div>
+        
+      </div>
+    </form>
+  </div>
+</div>
+  
+  <!-- Aquí puedes agregar el bloque de código para mostrar el mensaje -->
+  <div id="my-table">
+    {% if events %}
+      <!-- Aquí va tu tabla -->
+    {% else %}
+      <p>No se encontraron registros.</p>
+    {% endif %}
+  </div>
 
-<div id="my-table"></div>
-<form id="my-form">
-  <!-- input fields here -->
-  <button id="my-button" type="submit">Enviar</button>
-</form>
+  <div class="btn-group">
+    <form id="my-form2" method="post" action="{% url 'enviar_telegram' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <label for="archivo" class="btn btn-primary" style="background-color: white; border-color: white;">
+        <input type="file" name="archivo" id="archivo" style="display:none;" onchange="document.getElementById('selected-file').innerText = this.files[0].name;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-arrow-up" viewBox="0 0 16 16" style="color: black;">
+          <path d="M5.293 4.293a1 1 0 0 1 1.414 0L8 5.586l1.293-1.293a1 1 0 1 1 1.414 1.414l-2 2a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 0-1.414zM8 11a.5.5 0 0 1-.5-.5V1a.5.5 0 0 1 1 0v9.5a.5.5 0 0 1-.5.5z"/>
+          <path fill-rule="evenodd" d="M0 5a2 2 0 0 1 2-2h4a.5.5 0 0 1 0 1H2a1 1 0 1 0 0 2h12a1 1 0 1 0 0-2h-1.5a.5.5 0 0 1 0-1H14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V5z"/>
+        </svg>
+      </label>
+      <span id="selected-file" style="margin-left: 10px;">Nombre del archivo seleccionado</span>
+      <button type="submit" class="btn btn-primary" style="background-color: #1da1f2; border-color: #1da1f2; color: black;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16" style="color: black;">
+          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.168.486-4.666 2.01-.567.225-.595.442c-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294q.39.01.868-.32 3.269-2.206 3.374-2.23c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8 8 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629q.14.092.27.187c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.4 1.4 0 0 0-.013-.315.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09"/>
+        </svg>
+      </button>
+    </form>
+  </div>    
 
-<script>
-  $(document).ready(function() {
-    var table = new Tabulator("#my-table", {
-      layout: "fitColumns",
-      pagination: "local",
-      paginationSize: 50,
-      paginationSizeSelector: [50, 100, 150],
-      columns: [
-        { title: "Employee No.", field: "employeeNoString", headerFilter:true},
-        { title: "Name", field: "name", headerFilter:true},
-        { title: "Major", field: "major", headerFilter:true},
-        { title: "Minor", field: "minor", headerFilter:true},
-        { title: "Time", field: "time", headerFilter:true},
-        { title: "Door No.", field: "doorNo", headerFilter:true},
-        { title: "User Type", field: "userType", headerFilter:true},
-        { title: "Current Verify Mode", field: "currentVerifyMode", headerFilter:true},
-        { title: "Picture URL", field: "pictureURL", headerFilter:true},
-      ],
-    });
+  <div style="width: 220px;"></div>
+  <button id="download-excel" class="btn btn-primary" style="background-color: green; border-color: green; color: black;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filetype-xls" viewBox="0 0 16 16" style="color: black;">
+      <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2h-1v-1h1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5zM6.472 15.29a1.2 1.2 0 0 1-.111-.449h.765a.58.58 0 0 0 .254.384q.106.073.25.114.143.041.319.041.246 0 .413-.07a.56.56 0 0 0 .255-.193.5.5 0 0 0 .085-.29.39.39 0 0 0-.153-.326q-.152-.12-.462-.193l-.619-.143a1.7 1.7 0 0 1-.539-.214 1 1 0 0 1-.351-.367 1.1 1.1 0 0 1-.123-.524q0-.366.19-.639.19-.272.527-.422.338-.15.777-.149.457 0 .78.152.324.153.5.41.18.255.2.566h-.75a.56.56 0 0 0-.12-.258.6.6 0 0 0-.247-.181.9.9 0 0 0-.369-.068q-.325 0-.513.152a.47.47 0 0 0-.184.384q0 .18.143.3a1 1 0 0 0 .405.175l.62.143q.326.075.566.211a1 1 0 0 1 .375.358q.135.222.135.56 0 .37-.188.656a1.2 1.2 0 0 1-.539.439q-.351.158-.858.158-.381 0-.665-.09a1.4 1.4 0 0 1-.478-.252 1.1 1.1 0 0 1-.29-.375m-2.945-3.358h-.893L1.81 13.37h-.036l-.832-1.438h-.93l1.227 1.983L0 15.931h.861l.853-1.415h.035l.85 1.415h.908L2.253 13.94zm2.727 3.325H4.557v-3.325h-.79v4h2.487z"/>
+    </svg>
+  </button>
+  <button id="download-pdf" class="btn btn-primary" style="background-color: red; border-color: red; color: black;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filetype-pdf" viewBox="0 0 16 16" style="color: black;">
+      <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2h-1v-1h1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5zM1.6 11.85H0v3.999h.791v-1.342h.803q.43 0 .732-.173.305-.175.463-.474a1.4 1.4 0 0 0 .161-.677q0-.375-.158-.677a1.2 1.2 0 0 0-.46-.477q-.3-.18-.732-.179m.545 1.333a.8.8 0 0 1-.085.38.57.57 0 0 1-.238.241.8.8 0 0 1-.375.082H.788V12.48h.66q.327 0 .512.181.185.183.185.522m1.217-1.333a.2.2 0 0 1 .2-.2h.563q.371 0 .609.152a.9.9 0 0 1 .354.454q.118.302.118.753a2.3 2.3 0 0 1-.068.592 1.1 1.1 0 0 1-.196.422.8.8 0 0 1-.334.252 1.3 1.3 0 0 1-.483.082h-.563zm3.743 1.763v1.591h-.79V11.85h2.548v.653H7.896v1.117h1.606v.638z"/>
+    </svg>
+  </button>
+  <button id="print-table" class="btn btn-primary" style="background-color: white; border-color: white; color: black;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer-fill" viewBox="0 0 16 16" style="color: black;">
+      <path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1zm-4.5 6a1 1 0 0 1-1-1V7.5H3.5a.5.5 0 0 0-.5.5V14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8a.5.5 0 0 0-.5-.5h-1V14a1 1 0 0 1-1 1H4zm-3-7h8V5H5v3z"/>
+      <path d="M0 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H2a2 2 0 0 1-2-2zm2.5 1a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/></svg>
+  </button>
 
-    $('#my-button').click(function(event) {
-      event.preventDefault();
-      $.ajax({
-        url: '{% url 'get_events' device %}',
-        type: 'POST',
-        data: $('#my-form').serialize(),
-        success: function(data) {
-          console.log(data)
-          table.setData(data.events);
-        },
-        error: function(xhr, status, error) {
-          console.log('Error:', error);
+  <script>
+    $(document).ready(function() {
+
+        // Definir la función imageFormatter antes de la inicialización de la tabla
+        function imageFormatter(cell, formatterParams, onRendered) {
+            var imageURL = cell.getValue();
+            if (!imageURL) {
+                return "";
+            }
+            var img = document.createElement("img");
+            img.width = 25;
+            img.height = 25;
+            img.src = imageURL;
+            img.addEventListener("click", function() {
+                window.open(imageURL, '_blank');
+            });
+            // Devolver el elemento de imagen sin adjuntarlo al DOM de inmediato
+            return img;
         }
+
+      var table = new Tabulator("#my-table", {
+        layout: "fitColumns",
+        pagination: "local",
+        paginationSize: 50,
+        paginationSizeSelector: [50, 100, 150],
+        // Otras configuraciones...
+        scrollHorizontal: true,
+        columns: [
+          { title: "Employee No.", field: "employeeNoString", headerFilter:true, width: 50},
+          { title: "Name", field: "name", headerFilter:true, width: 150},
+          { title: "Major", field: "major", headerFilter:true, width: 50},
+          { title: "Major", field: "major", headerFilter: false, width: 200, formatter: "lookup", formatterParams: { 
+            // Define el mapeo de valores
+            '0': 'All Groups Events',
+            '1': 'Event Alarm',
+            '2': 'Device Exception',
+            '3': 'Device Operation',
+            '5': 'Device Event'
+          }},
+          { title: "Minor", field: "minor", headerFilter:true, width: 50},
+          { title: "Minor", field: "minor_description", headerFilter:true},
+          { title: "Time", field: "time", headerFilter:true},
+          { title: "Door No.", field: "doorNo", headerFilter:true, width: 50},
+          { title: "User Type", field: "userType", headerFilter:true, width: 50},
+          { title: "Current Verify Mode", field: "currentVerifyMode", headerFilter:true, width: 50},
+          { title: "Picture URL", field: "pictureURL", headerFilter:true},
+          { title: "Picture", field: "pictureURL", headerFilter:true, formatter: imageFormatter},
+        ],
       });
+
+      $('#download-pdf').click(function () {
+        generarPDF();
+      });
+
+      $('#download-excel').click(function () {
+          var tableData = table.getData();
+          var orderedTableData = tableData.map(function (row) {
+              return {
+                  "Employee No.": row.employeeNoString,
+                  "Name": row.name,
+                  "Major": row.major,
+                  "Minor": row.minor,
+                  "Time": row.time,
+                  "Door No.": row.doorNo,
+                  "User Type": row.userType,
+                  "Current Verify Mode": row.currentVerifyMode,
+                  "Picture URL": row.pictureURL
+              };
+          });
+          var worksheet = XLSX.utils.json_to_sheet(orderedTableData);
+          var workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Tabla');
+
+          // Autoajustar las columnas automáticamente
+          var range = XLSX.utils.decode_range(worksheet['!ref']);
+          for (var C = range.s.c; C <= range.e.c; ++C) {
+              var width = 0;
+              for (var R = range.s.r; R <= range.e.r; ++R) {
+                  var cell_address = {c: C, r: R};
+                  var cell_ref = XLSX.utils.encode_cell(cell_address);
+                  var cell = worksheet[cell_ref];
+                  if (!cell) continue;
+                  var cell_text = XLSX.utils.format_cell(cell);
+                  var cell_width = cell_text.length;
+                  if (cell_width > width) {
+                      width = cell_width;
+                  }
+              }
+              worksheet['!cols'] = worksheet['!cols'] || [];
+              worksheet['!cols'][C] = {wch: width};
+          }
+
+          XLSX.writeFile(workbook, 'tabla.xlsx');
+      });
+
+      $('#print-table').click(function () {
+          table.print(false, true);
+      });
+
+      
+        $('#my-button').click(function(event) {
+          event.preventDefault();
+          $.ajax({
+              url: '{% url 'get_events' device %}',
+              type: 'POST',
+              data: $('#my-form').serialize(),
+              success: function(data) {
+                  console.log(data);
+                  // Configurar los datos de la tabla
+                  table.setData(data.events, true); // El segundo parámetro 'true' indica que se borrarán los datos existentes
+                  // Llamar a la función redraw para que Tabulator vuelva a dibujar la tabla y aplique los cambios
+                  table.redraw();
+              },
+              error: function(xhr, status, error) {
+                  console.log('Error:', error);
+              }
+          });
+      });
+
+      function generarPDF() {
+      var tableData = table.getData();
+      var orderedTableData = tableData.map(function (row) {
+        return {
+          "Employee No.": row.employeeNoString,
+          "Name": row.name,
+          "Major": row.major,
+          "Minor": row.minor,
+          "Time": row.time,
+          "Door No.": row.doorNo,
+          "User Type": row.userType,
+          "Current Verify Mode": row.currentVerifyMode,
+          "Picture URL": row.pictureURL
+        };
+      });
+
+      var doc = new jsPDF('p', 'pt', 'letter');
+      var header = Object.keys(orderedTableData[0]);
+      var data = orderedTableData.map(obj => Object.values(obj));
+
+      doc.autoTable({
+        head: [header],
+        body: data,
+        styles: {
+          cellPadding: 2,
+          fontSize: 10,
+          valign: 'middle',
+          halign: 'center',
+          cellWidth: 'wrap',
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0],
+        },
+        columnStyles: {
+          0: {cellWidth: 'auto'}, // Employee No.
+          1: {cellWidth: 'auto'}, // Name
+          2: {cellWidth: 'auto'}, // Major
+          3: {cellWidth: 'auto'}, // Minor
+          4: {cellWidth: 'auto'}, // Time
+          5: {cellWidth: 'auto'}, // Door No.
+          6: {cellWidth: 'auto'}, // User Type
+          7: {cellWidth: 'auto'}, // Current Verify Mode
+          8: {cellWidth: 'auto'}, // Picture URL
+        },
+      });
+
+      doc.save('tabla.pdf');
+    }
+
     });
-  });
+
+    document.addEventListener('DOMContentLoaded', function () {
+            flatpickr('#desde', {
+                enableTime: true,
+                dateFormat: 'Y-m-dTH:i:S-03:00'
+            });
+
+            flatpickr('#hasta', {
+                enableTime: true,
+                dateFormat: 'Y-m-dTH:i:S-03:00'
+            });
+
+            $('#my-form2').submit(function (event) {
+                event.preventDefault();
+                var formData = new FormData(this);
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: $(this).attr('method'),
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Mensaje enviado correctamente.',
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Hubo un problema al enviar el mensaje.',
+                        });
+                    }
+                });
+            });
+        });
+    
+
 </script>
 
-
-
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  flatpickr('#desde', {
-    enableTime: true,
-    dateFormat: 'Y-m-dTH:i:S-03:00'
-  });
-
-  flatpickr('#hasta', {
-    enableTime: true,
-    dateFormat: 'Y-m-dTH:i:S-03:00'
-  });
-});
-</script>
-
-{% block scripts %}
+  {% block scripts %}
     <script src="{% static 'custom/show_events/show_events.js' %}"></script>
-  {% endblock %}
+    <!-- Incluye el script show_users.js -->
+    <script src="{% static 'custom/show_users/show_users.js' %}"></script>
+{% endblock %}
 {% endblock %}
