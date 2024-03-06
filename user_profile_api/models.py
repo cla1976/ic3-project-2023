@@ -170,6 +170,80 @@ class UserProfile(models.Model):
 
     USERNAME_FIELD = 'email'
 
+        def save(self, *args, **kwargs):
+        if not self.id:
+            existing_ids = set(UserProfile.objects.values_list('id', flat=True))
+            next_id = 1
+            while next_id in existing_ids:
+                next_id += 1
+            self.id = next_id
+        super().save(*args, **kwargs)
+
+
+class UserProfileStudent(models.Model):
+    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
+    subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir", blank=True)
+    user_verify_mode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación", null=True)
+    door_right = models.CharField(max_length=100, verbose_name="Puerta proxima", null=True)
+    doorNo = models.CharField(max_length=100, verbose_name="Número de puerta", null=True)
+    date_created = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha creación", null=True)
+    last_updated = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha actualización", null=True)
+    card = models.CharField(max_length=20, blank=True, verbose_name="Tarjeta", null=True)
+    card_type = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta", null=True)
+    time_type = models.CharField(max_length=10, default='local', verbose_name="Modo de hora", null=True)
+
+    class Meta:
+        verbose_name = "Alumno"
+        verbose_name_plural = "Alumnos"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            existing_ids = set(UserProfileStudent.objects.values_list('id', flat=True))
+            next_id = 1
+            while next_id in existing_ids:
+                next_id += 1
+            self.id = next_id
+        super().save(*args, **kwargs)
+
+class UserProfileMaintenance(models.Model):
+    choices = [(None, '-------'), ('Sí', 'Sí'), ('No', 'No')]
+
+    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
+    sunday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Domingo")
+    sunday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    sunday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    monday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Lunes")
+    monday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    monday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    tuesday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Martes")
+    tuesday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    tuesday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    wednesday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Miércoles")
+    wednesday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    wednesday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    thursday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Jueves")
+    thursday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    thursday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    friday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Viernes")
+    friday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    friday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+    saturday = models.CharField(max_length=3, choices=choices, default=None, verbose_name="Sábado")
+    saturday_time_begin = models.TimeField(null=True, verbose_name="Hora de inicio")
+    saturday_time_end = models.TimeField(null=True, verbose_name="Hora de fin")
+
+    class Meta:
+        verbose_name = "Personal de Mantenimiento"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            existing_ids = set(UserProfileMaintenance.objects.values_list('id', flat=True))
+            next_id = 1
+            while next_id in existing_ids:
+                next_id += 1
+            self.id = next_id
+        super().save(*args, **kwargs)
+
+
 class Room(models.Model):
     room = models.CharField(max_length=100)
     location = models.CharField(max_length=100)
