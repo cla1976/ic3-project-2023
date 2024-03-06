@@ -170,7 +170,7 @@ class UserProfile(models.Model):
 
     USERNAME_FIELD = 'email'
 
-        def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs):
         if not self.id:
             existing_ids = set(UserProfile.objects.values_list('id', flat=True))
             next_id = 1
