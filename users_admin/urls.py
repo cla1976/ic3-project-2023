@@ -15,22 +15,45 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from user_profile_api.views import video, show_doors, show_doors_devices, video_open_door, show_users_devices, show_users, get_users, show_events, show_events_devices, GetEventsView, GetDoorsView, GetFingerprint, schedule_career, schedule_career_home, schedule_career_home_year, GetCardCode
+from user_profile_api.views import (
+    video, 
+    show_doors, 
+    show_doors_devices, 
+    video_open_door, 
+    show_users_devices, 
+    show_users, 
+    get_users, 
+    show_events, 
+    show_events_devices, 
+    GetEventsView, 
+    GetDoorsView, 
+    GetFingerprint, 
+    schedule_career, 
+    schedule_career_home, 
+    schedule_career_home_year, 
+    GetCardCode,
+    massive_door_opening,
+    video_individual
+)
+
+
 urlpatterns = [
+    path('video/', video, name='video'),
+    path('video/massive_door_opening/', massive_door_opening, name='massive_door_opening'),
+    path('video/individual/<str:device>/', video_individual, name='video_individual'),
     path('video/open_door/<str:device>/', video_open_door, name='video_open_door'),
     path('show_users/<str:device>/get_users/', get_users, name='get_users'),
     path('show_events/<str:device>/get_events/', GetEventsView.as_view(), name='get_events'),
     path('show_doors/<str:device>/show_doors/', GetDoorsView.as_view(), name='get_doors'),
+
     path('user_profile_api/userprofile/<str:id>/<str:action>/get_fingerprint/', GetFingerprint.as_view(), name='get_fingerprint'),
     path('user_profile_api/userprofile/add/get_fingerprint/', GetFingerprint.as_view(), name='get_fingerprint'),
     path('user_profile_api/userprofile/<str:id>/<str:action>/get_qrcode/', GetCardCode.as_view(), name='get_qrcode'),
     path('user_profile_api/userprofile/add/get_qrcode/', GetCardCode.as_view(), name='get_qrcode'),
 
-
     path('horario/<str:career>/<str:year>', schedule_career, name='schedule_career'),
     path('horario/<str:career>/', schedule_career_home_year, name='schedule_career_home_year'),
     path('horario/', schedule_career_home, name='schedule_career_home'),
-    path('video/', video, name='video'),
     path('show_users/<str:device>/', show_users, name='show_users'),
     path('show_users/', show_users_devices, name='show_users_devices'),
     path('show_events/<str:device>/', show_events, name='show_events'),
