@@ -3,6 +3,7 @@ from django.utils import timezone
 from multiselectfield import MultiSelectField
 from django.db.models import Max
 from django_cryptography.fields import encrypt
+from django.core.exceptions import ValidationError
 
 DEVICES = (('1', 'Device 1'),
            ('2', 'Device 2'),
@@ -172,6 +173,20 @@ class UserProfile(models.Model):
     profile_type = models.CharField(default='normal', max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario del dipositivo")
     file_image = models.FileField(upload_to='user_profile_api/images/', null=True, blank=True, verbose_name="Imagen")
     user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Tipo de usuario dentro de la institución")
+    card = models.CharField(unique=True, max_length=20, blank=True, null=True, verbose_name="Tarjeta")
+    cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta")
+    timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora")
+
+    def clean(self): #Posibles errores relacionados a tarjeta 
+        super().clean()
+        if self.card and not self.cardType:
+            raise ValidationError({'cardType': 'Tipo de tarjeta es requerido si se agrega tarjeta.'})
+        elif self.cardType and not self.card:
+            raise ValidationError({'card': 'Tarjeta es requerido si tipo de tarjeta se completa.'})
+        elif self.card and not (17 <= len(self.card) <= 20):
+            raise ValidationError(
+                {'card': "El identificador de tarjeta debe tener entre 17 y 20 caracteres y solo puede contener letras o números."}
+            )
 
     def __str__(self):
         text = "{0} {1} {2}"

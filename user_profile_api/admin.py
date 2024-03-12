@@ -8,7 +8,11 @@ from django import forms
 from user_profile_api.models import UserTypes, UserProfile, UserProfileStudent, UserProfileMaintenance, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule, EventsDescription
 from django.utils import timezone
 from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
-from .forms import UserProfileAdminForm, DeviceForm, UserProfileForm, UserProfileStudentForm, UserProfileMaintenanceForm
+from .forms import DeviceForm, UserProfileForm, UserProfileStudentForm, UserProfileMaintenanceForm
+from django.utils.html import format_html
+import qrcode
+import base64
+import re
 
 class UserProfileStudentInline(admin.StackedInline):
     model = UserProfileStudent
@@ -24,7 +28,7 @@ class UserProfileMaintenanceInline(admin.StackedInline):
 class ManageUser(admin.ModelAdmin):
     inlines = [UserProfileStudentInline, UserProfileMaintenanceInline]
     form = UserProfileForm
-    list_display=('device', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type')
+    list_display=('device', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type', 'qr_code', 'download_qr')
     ordering=('first_name','last_name')
     search_fields= ('dni', 'email', 'phone', 'first_name', 'last_name')
     list_per_page=50
@@ -49,6 +53,32 @@ class ManageUser(admin.ModelAdmin):
                 ('visitor', 'Visitante')
             ]
         return form
+    
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        if 'userprofile/add/' in request.path or re.search('userprofile/.*/change/', request.path):
+            context.update({"custom_button": True, "show_copy_button": True})
+        else:
+            context.update({"custom_button": False, "show_copy_button": False})
+        return super().render_change_form(request, context, add, change, form_url, obj)
+
+    def qr_code(self, obj): 
+        img_str = generate_qr_code(obj.card)
+        if img_str:
+            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+        else:
+            return "-"
+
+    qr_code.short_description = 'Código QR'
+
+    def download_qr(self, obj):
+        img_str = generate_qr_code(obj.card)
+        if img_str:
+            download_link = format_html('<a href="data:image/png;base64,{}" download="qr_code.png">Descargar QR</a>', img_str)
+            return download_link
+        else:
+            return "-"
+
+    download_qr.short_description = 'Descargar QR'
 
 @admin.register(Room)
 class ManageRoom(admin.ModelAdmin):
@@ -121,4 +151,26 @@ class ManageUserTypes(admin.ModelAdmin):
     ordering=('id',)
     search_fields= ('id','user_type')
     list_per_page=10
+    
+def generate_qr_code(card):
+    if isinstance(card, str) and len(card) >= 17:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=5,
+            border=4,
+        )
+        qr.add_data(card)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+
+        # Obtener los datos de la imagen en formato base64
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+
+        return img_str
+    else:
+        return None
 

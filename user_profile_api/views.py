@@ -38,6 +38,8 @@ from django.http import HttpResponseBadRequest
 from datetime import timedelta
 import logging
 from user_profile_api.notifications import send_email, send_telegram
+import random
+import string
 
 def check_admin(user):
    return user.is_superuser
@@ -558,7 +560,7 @@ def enviar_telegram_usuarios(request):
             return HttpResponse("Mensaje y archivo enviados con éxito.")
         else:
             return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
-
+          
 @csrf_exempt
 def eventlistener(request):
     if request.method == 'POST':
@@ -579,3 +581,17 @@ def eventlistener(request):
         return HttpResponse("Solicitud POST recibida en /eventlistener/.", status=200)
     else:
         return HttpResponse(status=405)
+
+class GetCardCode(TemplateView):
+    template_name = 'admin/submit_line.html'
+
+    def post(self, request, *args, **kwargs):
+
+        def generar_id(longitud):
+            caracteres = string.ascii_letters + string.digits  
+            return ''.join(random.choice(caracteres) for _ in range(longitud))
+
+        longitud_id = random.randint(17, 20)
+        id_unico = generar_id(longitud_id)
+
+        return JsonResponse({'codecard': id_unico})
