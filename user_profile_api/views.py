@@ -36,6 +36,8 @@ import subprocess
 from .models import UserProfile, EventsDescription
 from django.http import HttpResponseBadRequest
 from datetime import timedelta
+import logging
+from user_profile_api.notifications import send_email, send_telegram
 import random
 import string
 
@@ -558,7 +560,28 @@ def enviar_telegram_usuarios(request):
             return HttpResponse("Mensaje y archivo enviados con éxito.")
         else:
             return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
+          
+@csrf_exempt
+def eventlistener(request):
+    if request.method == 'POST':
+        content_type = request.headers.get('Content-Type', '')
+        content_length = request.headers.get('Content-Length', 0)
+        post_data = request.body
         
+        logging.info("POST request,\nPath: %s\nContent-Type: %s\nContent-Length: %s\n\nBody:\n%s\n", request.path, content_type, content_length, post_data)
+        
+        if b'"majorEventType":\t5' in post_data and b'"subEventType":\t6' in post_data:
+            print("Se encontraron ambas subcadenas:")
+            print(post_data.decode('utf-8'))
+            send_telegram()
+            send_email()
+        else:
+            print("No se encontraron ambas subcadenas en la solicitud.")
+
+        return HttpResponse("Solicitud POST recibida en /eventlistener/.", status=200)
+    else:
+        return HttpResponse(status=405)
+
 class GetCardCode(TemplateView):
     template_name = 'admin/submit_line.html'
 
