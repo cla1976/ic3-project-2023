@@ -20,6 +20,9 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_UserRightPlanTemplate,
     URL_FaceDataRecord,
+    URL_ADD_CARD,
+    URL_MODIFY_CARD,
+    URL_DELETE_CARD
 )
 from users_admin.settings import DEVICE_UUID
 from requests.auth import HTTPDigestAuth
@@ -27,6 +30,7 @@ from user_profile_api.models import UserProfileStudent, SubjectSchedule, Device,
 from django.db.models import F
 from unidecode import unidecode
 from requests.auth import HTTPDigestAuth
+import time
 
 # Archivo de señales. Se activan funcionalidades que están ligadas al panel de administración
 # que trae por defecto Django basandose en detección de cambios en los modelos 
@@ -209,6 +213,28 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                 else:
                                     raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
 
+                        if instance.card:
+                            base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                            record_url = f"{URL_ADD_CARD}?format=json"
+                            full_url = f"{base_url}{record_url}"
+
+                            print("Acá se crea con tarjeta")
+                            payload = { 
+                                "CardInfo": {
+                                    "employeeNo": str(instance.user_device_id),
+                                    "cardNo": str(instance.card),
+                                    "cardType": str(instance.cardType)
+                                }
+                            }
+
+                            print(payload)
+                            
+                            response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                            if response.status_code == 200:
+                                print("Tarjeta creada y enviada correctamente!")
+                            else:
+                                raise Exception("Error enviando tarjeta al dispositivo: {}".format(response.text))
                 else:
                     raise Exception("Error enviando el usuario al dispositivo: {}".format(response.text))
 
@@ -725,6 +751,61 @@ def send_image_data(sender, created, instance, **kwargs):
 # Se sube el JSON al dispositivo respectivo tanto como para el horario de la materia
 # como el plan de horario relacionado.
 
+@receiver(post_save, sender=UserProfile)
+def enviar_tarjeta(sender, created, instance, **kwargs):
+
+    GATEWAY_PORT = instance.device.door_port
+    GATEWAY_USER = instance.device.user
+    GATEWAY_PASSWORD = instance.device.password
+
+    if mockeo:
+        return
+
+    if created:
+        return 
+
+    if instance.card:
+        subject_schedules = instance.subject.all()
+        ips = []
+
+        for subject_schedule in subject_schedules:
+            device = subject_schedule.device
+            if device and device.is_active:  
+                ips.append(device.ip)
+
+        for ip_address in ips:
+
+            base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+            record_url = f"{URL_DELETE_CARD}?format=json"
+            full_url = f"{base_url}{record_url}"
+
+            print("Se borra la tarjeta")
+
+            payload = {         
+                "CardInfoDelCond" : {
+                    "EmployeeNoList" : [{
+                    "employeeNo": str(instance.user_device_id)
+                    }]
+                }
+            }
+
+            response = requests.request("PUT", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            if response.status_code == 200:
+                print("Tarjeta borrada para ser reemplazada")
+                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                record_url = f"{URL_ADD_CARD}?format=json"
+                full_url = f"{base_url}{record_url}"
+
+                print("Acá se reemplaza la tarjeta")
+                payload = { 
+                    "CardInfo": {
+                        "employeeNo": str(instance.user_device_id),
+                        "cardNo": str(instance.card),
+                        "cardType": str(instance.cardType)
+                    }
+                }
+                
 #corregida
 @receiver(pre_save, sender=SubjectSchedule)
 def enviar_horario(sender, instance, **kwargs):

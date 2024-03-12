@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'multiselectfield',
     'user_profile_api',
     'celery',
+    'qrcode'
 ]
 
 CELERY_BEAT_SCHEDULE = {

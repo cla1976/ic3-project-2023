@@ -36,6 +36,8 @@ import subprocess
 from .models import UserProfile, EventsDescription
 from django.http import HttpResponseBadRequest
 from datetime import timedelta
+import random
+import string
 
 def check_admin(user):
    return user.is_superuser
@@ -556,3 +558,17 @@ def enviar_telegram_usuarios(request):
             return HttpResponse("Mensaje y archivo enviados con éxito.")
         else:
             return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
+        
+class GetCardCode(TemplateView):
+    template_name = 'admin/submit_line.html'
+
+    def post(self, request, *args, **kwargs):
+
+        def generar_id(longitud):
+            caracteres = string.ascii_letters + string.digits  
+            return ''.join(random.choice(caracteres) for _ in range(longitud))
+
+        longitud_id = random.randint(17, 20)
+        id_unico = generar_id(longitud_id)
+
+        return JsonResponse({'codecard': id_unico})
