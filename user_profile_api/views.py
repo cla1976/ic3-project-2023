@@ -36,7 +36,6 @@ import subprocess
 from .models import UserProfile, EventsDescription
 from django.http import HttpResponseBadRequest
 from datetime import timedelta
-from django.conf import settings
 
 def check_admin(user):
    return user.is_superuser
@@ -422,11 +421,15 @@ def show_events(request, device):
     # Renderiza la plantilla con el nuevo contexto
     return render(request, "custom/show_events/show_events.html", context)
 
+#BOT TELEGRAM
+bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
+chat_id = '1309708511'
+
 def enviar_telegram(request): 
     if request.method == 'POST':
         
-        bot_token = settings.bot_token
-        chat_id = settings.chat_id
+        token = bot_token
+        chat = chat_id
         mensaje = "Copia de seguridad del historial de eventos"
         
         # Verificar si el campo 'archivo' está presente en la solicitud POST
@@ -437,10 +440,10 @@ def enviar_telegram(request):
         archivo = request.FILES['archivo']
 
         # Construir la URL de la API de Telegram para enviar archivos
-        url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
 
         # Crear los datos de la solicitud
-        data = {'chat_id': chat_id, 'caption': mensaje}
+        data = {'chat_id': chat, 'caption': mensaje}
 
         # Agregar el archivo a los datos de la solicitud
         files = {'document': archivo}
@@ -455,18 +458,18 @@ def enviar_telegram(request):
 
 def enviar_telegram_usuarios(request): 
     if request.method == 'POST':
-        bot_token = settings.bot_token
-        chat_id = settings.chat_id
+        token = bot_token
+        chat = chat_id
         mensaje = "Copia de seguridad de los usuarios del dispositivo"
         
         # Obtener el archivo enviado en la solicitud
         archivo = request.FILES['archivo']
 
         # Construir la URL de la API de Telegram para enviar archivos
-        url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
 
         # Crear los datos de la solicitud
-        data = {'chat_id': chat_id, 'caption': mensaje}
+        data = {'chat_id': chat, 'caption': mensaje}
 
         # Agregar el archivo a los datos de la solicitud
         files = {'document': archivo}
@@ -477,4 +480,4 @@ def enviar_telegram_usuarios(request):
         if response.status_code == 200:
             return HttpResponse("Mensaje y archivo enviados con éxito.")
         else:
-            return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
+            return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
