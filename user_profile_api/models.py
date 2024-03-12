@@ -161,7 +161,7 @@ class UserProfile(models.Model):
     card = models.CharField(unique=True, max_length=20, blank=True, null=True, verbose_name="Tarjeta")
     cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta")
     timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora")
-    fingerprint = models.TextField(unique=True, blank=True, null=True)
+    fingerprint = models.TextField(blank=True, null=True)
 
     def clean(self):
         super().clean()
