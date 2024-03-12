@@ -216,7 +216,7 @@ print('Environment:', ENVIRONMENT)
 #GATEWAY_IP = utils.get_secret('GATEWAY_IP')
 #GATEWAY_IP2 = utils.get_secret('GATEWAY_IP2')
 GATEWAY_PORT = '85'
-GATEWAY_RTSP = '554';
+GATEWAY_RTSP = '554'
 GATEWAY_USER = 'admin'
 GATEWAY_PASSWORD = utils.get_secret('GATEWAY_PASSWORD')
 DEVICE_UUID = 'D76C6D74-4B20-4BB1-8C4C-B51244DF3026'
@@ -227,6 +227,3 @@ GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
 #MEDIA_URL = '/media/'
 #MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-#BOT TELEGRAM
-bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
-chat_id = '1309708511'
