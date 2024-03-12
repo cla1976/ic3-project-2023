@@ -119,7 +119,7 @@
       <div class="form-row">
         <div class="form-group col-md-2">
           <label for="select-usuario">Usuario num.</label>
-          <select name="select-usuario" id="select-usuario" class="form-control">
+          <select name="select-usuario" id="select-usuario" class="form-control form-control-sm">
             <option value="">Selecciona un usuario</option>
             {% for user in users %}
               <option value="{{ user.employeeNoString }}">{{ user.name }} {{ user.employeeNoString }}</option>
@@ -128,7 +128,7 @@
         </div>
         <div class="form-group col-md-2">
           <label for="grupoevento">Grupo de evento</label>
-          <select name="grupoevento" id="grupoevento" class="form-control">
+          <select name="grupoevento" id="grupoevento" class="form-control form-control-sm">
             {% for choice in EVENT_CHOICES %}
               <option value="{{ choice.0 }}">{{ choice.0 }} - {{ choice.1 }}</option>
             {% endfor %}
@@ -136,7 +136,7 @@
         </div>
         <div class="form-group col-md-2">
           <label for="tipoevento">Tipo de evento</label>
-          <select name="tipoevento" id="tipoevento" class="form-control">
+          <select name="tipoevento" id="tipoevento" class="form-control form-control-sm">
             {% for event_description in event_descriptions %}
               <option value="{{ event_description.number }}">{{ event_description.major }} - {{ event_description.number }} - {{ event_description.description }}</option>
             {% endfor %}
@@ -144,22 +144,22 @@
         </div>
         <div class="form-group col-md-2">
           <label for="desde">Desde</label>
-          <input type="datetime-local" class="form-control" name="desde" id="desde" value="{{ current_date1 }}" data-enable-time="true">
+          <input type="datetime-local" class="form-control form-control-sm" name="desde" id="desde" value="{{ current_date1 }}" data-enable-time="true">
         </div>
         <div class="form-group col-md-2">
           <label for="hasta">Hasta</label>
-          <input type="datetime-local" class="form-control" name="hasta" id="hasta" value="{{ current_date2 }}" data-enable-time="true">
+          <input type="datetime-local" class="form-control form-control-sm" name="hasta" id="hasta" value="{{ current_date2 }}" data-enable-time="true">
         </div>
         <div class="form-group col-md-2">
-          <label for="button">.</label>
-          <button id="my-button" type="submit" class="btn btn-primary">Enviar</button>
+          <label for="button">Filtrar</label>
+          <button id="my-button" type="submit" class="btn btn-primary btn-sm mr-2">Enviar</button>
+          <button id="open-new-tab" class="btn btn-secondary btn-sm">Picture</button>
         </div>
-        
       </div>
     </form>
   </div>
 </div>
-  
+
   <!-- Aquí puedes agregar el bloque de código para mostrar el mensaje -->
   <div id="my-table">
     {% if events %}
@@ -305,23 +305,28 @@
       });
 
       
-        $('#my-button').click(function(event) {
-          event.preventDefault();
-          $.ajax({
-              url: '{% url 'get_events' device %}',
-              type: 'POST',
-              data: $('#my-form').serialize(),
-              success: function(data) {
-                  console.log(data);
-                  // Configurar los datos de la tabla
-                  table.setData(data.events, true); // El segundo parámetro 'true' indica que se borrarán los datos existentes
-                  // Llamar a la función redraw para que Tabulator vuelva a dibujar la tabla y aplique los cambios
-                  table.redraw();
-              },
-              error: function(xhr, status, error) {
-                  console.log('Error:', error);
-              }
-          });
+      $('#open-new-tab').click(function() {
+          var newTabUrl = 'http://181.189.221.10';
+          window.open(newTabUrl, '_blank');
+      });
+
+      $('#my-button').click(function(event) {
+        event.preventDefault();
+        $.ajax({
+            url: '{% url 'get_events' device %}',
+            type: 'POST',
+            data: $('#my-form').serialize(),
+            success: function(data) {
+                console.log(data);
+                // Configurar los datos de la tabla
+                table.setData(data.events, true); // El segundo parámetro 'true' indica que se borrarán los datos existentes
+                // Llamar a la función redraw para que Tabulator vuelva a dibujar la tabla y aplique los cambios
+                table.redraw();
+            },
+            error: function(xhr, status, error) {
+                console.log('Error:', error);
+            }
+        });
       });
 
       function generarPDF() {
