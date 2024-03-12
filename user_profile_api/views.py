@@ -36,6 +36,7 @@ import subprocess
 from .models import UserProfile, EventsDescription
 from django.http import HttpResponseBadRequest
 from datetime import timedelta
+from django.conf import settings
 
 def check_admin(user):
    return user.is_superuser
@@ -423,9 +424,9 @@ def show_events(request, device):
 
 def enviar_telegram(request): 
     if request.method == 'POST':
-        print("ACALLL")
-        bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
-        chat_id = '1309708511'
+        
+        bot_token = settings.bot_token
+        chat_id = settings.chat_id
         mensaje = "Copia de seguridad del historial de eventos"
         
         # Verificar si el campo 'archivo' está presente en la solicitud POST
@@ -454,8 +455,8 @@ def enviar_telegram(request):
 
 def enviar_telegram_usuarios(request): 
     if request.method == 'POST':
-        bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
-        chat_id = '1309708511'
+        bot_token = settings.bot_token
+        chat_id = settings.chat_id
         mensaje = "Copia de seguridad de los usuarios del dispositivo"
         
         # Obtener el archivo enviado en la solicitud

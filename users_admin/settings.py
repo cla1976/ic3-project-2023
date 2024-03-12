@@ -226,3 +226,7 @@ GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
 
 #MEDIA_URL = '/media/'
 #MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+#BOT TELEGRAM
+bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
+chat_id = '1309708511'
