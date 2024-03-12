@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.conf import ENVIRONMENT_VARIABLE
 import utils
+from .celery import app as celery_app
 from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -48,17 +49,13 @@ INSTALLED_APPS = [
 ]
 
 CELERY_BEAT_SCHEDULE = {
-      'add-every-30-seconds': {
-        'task': 'user_profile_api.tasks.add',
-        'schedule': crontab(hour=20, minute=30, day_of_week=4),
-        'args': (2, 2),
-        'options': {
-            'expires': 15.0,
-        },
-    },
+       'sincronize-users': {
+           'task': 'user_profile_api.tasks.sincronize_users', 
+           'schedule': crontab(minute=0, hour='*/4'),
+      },   
 }
 
-CELERY_ALWAYS_EAGER = True
+CELERY_ALWAYS_EAGER = False
 # Celery Configuration Options
 CELERY_TIMEZONE = "America/Argentina/Buenos_Aires"
 CELERY_TASK_TRACK_STARTED = True
@@ -198,6 +195,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'jazzmin/static'),
+]
+
 STATIC_URL = 'static/'
 
 # Default primary key field type
@@ -215,12 +216,14 @@ print('Environment:', ENVIRONMENT)
 # Gateway & Device Settings
 #GATEWAY_IP = utils.get_secret('GATEWAY_IP')
 #GATEWAY_IP2 = utils.get_secret('GATEWAY_IP2')
+
 GATEWAY_PORT = '85'
 GATEWAY_RTSP = '554'
 GATEWAY_USER = 'admin'
 GATEWAY_PASSWORD = utils.get_secret('GATEWAY_PASSWORD')
 DEVICE_UUID = 'D76C6D74-4B20-4BB1-8C4C-B51244DF3026'
 GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
+GATEWAY_ONE_CAMERA = utils.get_secret('GATEWAY_ONE_CAMERA')
 
 #BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
 
