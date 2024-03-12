@@ -36,6 +36,7 @@ import subprocess
 from django.contrib import messages
 import random 
 import string 
+from user_profile_api.notifications import send_email, send_telegram
 
 def check_admin(user):
    return user.is_superuser
@@ -391,3 +392,88 @@ def show_events(request, device):
     print(device)
     lista_device = {'device': device}
     return render(request, "custom/show_events/show_events.html", lista_device)
+
+#BOT TELEGRAM
+bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
+chat_id = '1309708511'
+
+
+def enviar_telegram(request): 
+    if request.method == 'POST':
+        
+        token = bot_token
+        chat = chat_id
+        mensaje = "Copia de seguridad del historial de eventos"
+        
+        # Verificar si el campo 'archivo' está presente en la solicitud POST
+        if 'archivo' not in request.FILES:
+            return HttpResponseBadRequest("El campo 'archivo' no está presente en la solicitud.")
+        
+        # Obtener el archivo enviado en la solicitud
+        archivo = request.FILES['archivo']
+
+        # Construir la URL de la API de Telegram para enviar archivos
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
+
+        # Crear los datos de la solicitud
+        data = {'chat_id': chat, 'caption': mensaje}
+
+        # Agregar el archivo a los datos de la solicitud
+        files = {'document': archivo}
+
+        # Enviar la solicitud a la API de Telegram
+        response = requests.post(url, data=data, files=files)
+
+        if response.status_code == 200:
+            return HttpResponse("Mensaje y archivo enviados con éxito.")
+        else:
+            return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
+
+def enviar_telegram_usuarios(request): 
+    if request.method == 'POST':
+        token = bot_token
+        chat = chat_id
+        mensaje = "Copia de seguridad de los usuarios del dispositivo"
+        
+        # Obtener el archivo enviado en la solicitud
+        archivo = request.FILES['archivo']
+
+        # Construir la URL de la API de Telegram para enviar archivos
+        url = f"https://api.telegram.org/bot{token}/sendDocument"
+
+        # Crear los datos de la solicitud
+        data = {'chat_id': chat, 'caption': mensaje}
+
+        # Agregar el archivo a los datos de la solicitud
+        files = {'document': archivo}
+
+        # Enviar la solicitud a la API de Telegram
+        response = requests.post(url, data=data, files=files)
+
+        if response.status_code == 200:
+            return HttpResponse("Mensaje y archivo enviados con éxito.")
+        else:
+            return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
+
+
+@csrf_exempt
+def eventlistener(request):
+    if request.method == 'POST':
+        content_type = request.headers.get('Content-Type', '')
+        content_length = request.headers.get('Content-Length', 0)
+        post_data = request.body
+        
+        logging.info("POST request,\nPath: %s\nContent-Type: %s\nContent-Length: %s\n\nBody:\n%s\n", request.path, content_type, content_length, post_data)
+        
+        if b'"majorEventType":\t5' in post_data and b'"subEventType":\t21' in post_data:
+            print("Se encontraron ambas subcadenas:")
+            print(post_data.decode('utf-8'))
+            send_telegram()
+            send_email()
+        else:
+            print("No se encontraron ambas subcadenas en la solicitud.")
+
+        return HttpResponse("Solicitud POST recibida en /eventlistener/.", status=200)
+    else:
+        return HttpResponse(status=405)
+

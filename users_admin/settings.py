@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.conf import ENVIRONMENT_VARIABLE
 import utils
+from .celery import app as celery_app
 from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -47,6 +48,14 @@ INSTALLED_APPS = [
     'celery',
     'qr_code',
 ]
+
+CELERY_BEAT_SCHEDULE = {
+       'sincronize-users': {
+           'task': 'user_profile_api.tasks.sincronize_users', 
+           'schedule': crontab(minute=0, hour='*/4'),
+      },   
+}
+
 
 CELERY_ALWAYS_EAGER = False
 # Celery Configuration Options
@@ -225,3 +234,11 @@ HASHID_FIELD_SALT = utils.get_secret('HASHID_FIELD_SALT')
 #MEDIA_URL = '/media/'
 #MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+#Mail configuration
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ic3unraf@gmail.com'
+EMAIL_HOST_PASSWORD = 'rdmk btvy cwth yxfa'

@@ -29,7 +29,7 @@ class UserProfileForm(forms.ModelForm):
 @admin.register(UserProfile)
 class ManageUser(admin.ModelAdmin):
     form = UserProfileForm
-    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'is_active', 'is_staff', 'profile_type', 'fileImage', 'qr_code', 'huella')
+    list_display=('user_device_id', 'dni', 'first_name', 'last_name', 'is_active', 'is_staff', 'profile_type', 'qr_code', 'huella')
     ordering=('user_device_id',)
     search_fields= ('user_device_id', 'dni', 'email', 'first_name', 'last_name')
     list_per_page=50
@@ -62,7 +62,11 @@ class ManageUser(admin.ModelAdmin):
 
             img_str = base64.b64encode(buffered.getvalue()).decode()
 
-            return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+            img_html = format_html('<img src="data:image/png;base64,{}"/>', img_str)
+            download_link = format_html('<a href="data:image/png;base64,{}" download="qr_code.png" class="btn btn-primary"><i class="fa fa-download"></i></a>', img_str)
+
+            return img_html + download_link
+
         else:
             img = Image.new('RGB', (160, 160), color = (256, 256, 256))
 
@@ -79,6 +83,7 @@ class ManageUser(admin.ModelAdmin):
             return format_html('<img src="data:image/png;base64,{}"/>', img_str)
 
     qr_code.short_description = 'Código QR'
+
 
     def huella(self, obj):
         if obj.fingerprint == '':

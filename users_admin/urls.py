@@ -15,7 +15,28 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from user_profile_api.views import video, show_doors, show_doors_devices, video_open_door, show_users_devices, show_users, get_users, show_events, show_events_devices, GetEventsView, GetDoorsView, GetFingerprint, schedule_career, schedule_career_home, schedule_career_home_year, GetCardCode
+from user_profile_api.views import (
+    GetCardCode,
+    GetDoorsView,
+    GetEventsView,
+    GetFingerprint,
+    get_users,
+    schedule_career,
+    schedule_career_home,
+    schedule_career_home_year,
+    show_doors,
+    show_doors_devices,
+    show_events,
+    show_events_devices,
+    show_users,
+    show_users_devices,
+    video,
+    video_open_door,
+    enviar_telegram, 
+    enviar_telegram_usuarios, 
+    eventlistener,
+)
+
 urlpatterns = [
     path('video/open_door/<str:device>/', video_open_door, name='video_open_door'),
     path('show_users/<str:device>/get_users/', get_users, name='get_users'),
@@ -37,5 +58,8 @@ urlpatterns = [
     path('show_events/', show_events_devices, name='show_events_devices'),
     path('show_doors/<str:device>/', show_doors, name='show_doors'),
     path('show_doors/', show_doors_devices, name='show_doors_devices'),
+    path('enviar_telegram/', enviar_telegram, name='enviar_telegram'),
+    path('enviar_telegram_usuarios/', enviar_telegram_usuarios, name='enviar_telegram_usuarios'),
+    path('eventlistener/', eventlistener, name='eventlistener'),
     path('', admin.site.urls)
 ]
