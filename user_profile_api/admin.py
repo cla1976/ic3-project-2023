@@ -1,7 +1,11 @@
 from django.contrib import admin
-
+from PIL import Image
+from django.core.files.uploadedfile import SimpleUploadedFile
+from io import BytesIO
+from django.core.files.base import ContentFile
+import os
 from django import forms
-from user_profile_api.models import UserTypes, UserProfile, UserProfileStudent, UserProfileMaintenance, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule
+from user_profile_api.models import UserTypes, UserProfile, UserProfileStudent, UserProfileMaintenance, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule, EventsDescription
 from django.utils import timezone
 from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
 from .forms import UserProfileAdminForm, DeviceForm, UserProfileForm, UserProfileStudentForm, UserProfileMaintenanceForm
@@ -104,9 +108,17 @@ class ManageDevice(admin.ModelAdmin):
     search_fields= ('id','device','date_purchased','user')
     list_per_page=10
   
+@admin.register(EventsDescription)
+class ManageEventsDescription(admin.ModelAdmin):
+    list_display=('number', 'description')
+    ordering=('number',)
+    search_fields= ('nummer','description')
+    list_per_page=10
+
 @admin.register(UserTypes)
 class ManageUserTypes(admin.ModelAdmin):
     list_display=('id', 'user_type')
     ordering=('id',)
     search_fields= ('id','user_type')
     list_per_page=10
+
