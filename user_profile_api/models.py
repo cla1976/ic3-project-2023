@@ -129,7 +129,7 @@ class SubjectSchedule(models.Model):
          ('Saturday', 'Sábado'),
          ('Sunday', 'Domingo'))
 
-    horario_id = models.IntegerField(blank=True, verbose_name="ID de horario", null=True)
+    horario_id = models.PositiveIntegerField(blank=True, verbose_name="ID de horario", null=True)
     begin_time = models.TimeField(null=True)
     end_time = models.TimeField(null=True)
     day = MultiSelectField(choices=WEEK, max_length=255, null=True)
