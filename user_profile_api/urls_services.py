@@ -26,3 +26,4 @@ URL_CHECK_FINGER_CAPABILITIES = '/ISAPI/AccessControl/CaptureFingerPrint/capabil
 URL_ADD_CARD = '/ISAPI/AccessControl/CardInfo/Record'
 URL_MODIFY_CARD = '/ISAPI/AccessControl/CardInfo/Modify'
 URL_DELETE_CARD = '/ISAPI/AccessControl/CardInfo/Delete'
+URL_DEVICE_INFO = '/ISAPI/System/deviceInfo'

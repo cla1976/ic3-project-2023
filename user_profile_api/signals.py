@@ -6,6 +6,7 @@ import json, base64
 import time
 from datetime import datetime
 from user_profile_api.middleware import specific_page_loaded
+import xml.etree.ElementTree as ET
 
 from user_profile_api.urls_services import (
     URL_RECORD_USER,
@@ -24,6 +25,7 @@ from user_profile_api.urls_services import (
     URL_ADD_CARD,
     URL_MODIFY_CARD,
     URL_DELETE_CARD,
+    URL_DEVICE_INFO,
 )
 from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from requests.auth import HTTPDigestAuth
@@ -127,6 +129,31 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 print(plan_template_no)
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_RECORD_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -134,30 +161,65 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
                 end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
 
-                data = {
-                    "UserInfo": 
-                        {
-                            "employeeNo": str(instance.user_device_id),
-                            "name": str(instance.first_name + " " + instance.last_name),
-                            "userType": instance.profile_type,
-                            "gender": instance.gender,
-                            "Valid": {
-                                "enable": instance.is_active,
-                                "beginTime": begin_time_str,
-                                "endTime": end_time_str,
-                                "timeType": instance.timeType
-                            },
-                            "doorRight": instance.doorRight,
-                            "RightPlan": [
-                                {
-                                    "doorNo": instance.doorNo,
-                                    "planTemplateNo": plan_template_no
-                                }
-                            ],
-                            "localUIRight": instance.is_staff,
-                            "userVerifyMode": instance.userVerifyMode
+                if int(numero_encoder_released_date) <= 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                "doorRight": str(instance.doorRight),
+                                "RightPlan": [
+                                    {
+                                        "doorNo": instance.doorNo,
+                                        "planTemplateNo": plan_template_no
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
                         }
-                    }
+                    
+                    print("Firmware viejo")
+
+                elif int(numero_encoder_released_date) > 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                #"doorRight": str(instance.doorRight),
+                                "RightPlan": [
+                                    {
+                                        #"doorNo": instance.doorNo,
+                                        "planTemplateNo": plan_template_no
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
+                        }
+                    
+                    print("Firmware nuevo")
+
+                print(data)
 
                 response = requests.post(
                     full_url,
@@ -282,38 +344,96 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                     return
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_MODIFY_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
 
                 begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
                 end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
+                
+                if int(numero_encoder_released_date) <= 191119:
 
-                data = {
-                    "UserInfo": 
-                        {
-                            "employeeNo": str(instance.user_device_id),
-                            "name": str(instance.first_name + " " + instance.last_name),
-                            "userType": instance.profile_type,
-                            "gender": instance.gender,
-                            "Valid": {
-                                "enable": instance.is_active,
-                                "beginTime": begin_time_str,
-                                "endTime": end_time_str,
-                                "timeType": instance.timeType
-                            },
-                            "doorRight": instance.doorRight,
-                            "RightPlan": [
-                                {
-                                    "doorNo": instance.doorNo,
-                                    "planTemplateNo": plan_template_definitivo
-                                }
-                            ],
-                            "localUIRight": instance.is_staff,
-                            "userVerifyMode": instance.userVerifyMode
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                "doorRight": instance.doorRight,
+                                "RightPlan": [
+                                    {
+                                        "doorNo": instance.doorNo,
+                                        "planTemplateNo": plan_template_definitivo
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
                         }
-                    }
 
+                    print('Firmware viejo')
+                
+                elif int(numero_encoder_released_date) > 191119:
+
+                    data = {
+                            "UserInfo": 
+                                {
+                                    "employeeNo": str(instance.user_device_id),
+                                    "name": str(instance.first_name + " " + instance.last_name),
+                                    "userType": instance.profile_type,
+                                    "gender": instance.gender,
+                                    "Valid": {
+                                        "enable": instance.is_active,
+                                        "beginTime": begin_time_str,
+                                        "endTime": end_time_str,
+                                        "timeType": instance.timeType
+                                    },
+                                    #"doorRight": instance.doorRight,
+                                    "RightPlan": [
+                                        {
+                                            #"doorNo": instance.doorNo,
+                                            "planTemplateNo": plan_template_definitivo
+                                        }
+                                    ],
+                                    "localUIRight": instance.is_staff,
+                                    "userVerifyMode": instance.userVerifyMode
+                                }
+                            }
+                    
+                    print('Firmware viejo')
+                    
                 response = requests.put(
                     full_url,
                     headers=headers,
@@ -351,6 +471,31 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                     return
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_MODIFY_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -358,30 +503,64 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
                 end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
 
-                data = {
-                    "UserInfo": 
-                        {
-                            "employeeNo": str(instance.user_device_id),
-                            "name": str(instance.first_name + " " + instance.last_name),
-                            "userType": instance.profile_type,
-                            "gender": instance.gender,
-                            "Valid": {
-                                "enable": instance.is_active,
-                                "beginTime": begin_time_str,
-                                "endTime": end_time_str,
-                                "timeType": instance.timeType
-                            },
-                            "doorRight": instance.doorRight,
-                            "RightPlan": [
-                                {
-                                    "doorNo": instance.doorNo,
-                                    "planTemplateNo": plan_template_definitivo
-                                }
-                            ],
-                            "localUIRight": instance.is_staff,
-                            "userVerifyMode": instance.userVerifyMode
+                if int(numero_encoder_released_date) <= 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                "doorRight": instance.doorRight,
+                                "RightPlan": [
+                                    {
+                                        "doorNo": instance.doorNo,
+                                        "planTemplateNo": plan_template_definitivo
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
                         }
-                    }
+
+                    print('Firmware viejo')
+                                
+                elif int(numero_encoder_released_date) > 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                #"doorRight": instance.doorRight,
+                                "RightPlan": [
+                                    {
+                                        #"doorNo": instance.doorNo,
+                                        "planTemplateNo": plan_template_definitivo
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
+                        }
+
+                    print('Firmware nuevo')
+
 
                 response = requests.put(
                     full_url,
@@ -494,6 +673,31 @@ def send_user_data(sender, instance, created, **kwargs):
 
             for ip_address in ips:
 
+                base_url = "http://{}:{}".format(ip_address, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
                 base_url = f'http://{ip_address}:{GATEWAY_PORT}'
                 record_url = f"{URL_RECORD_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
@@ -502,29 +706,62 @@ def send_user_data(sender, instance, created, **kwargs):
                 begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
                 end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
 
-                data = {
-                    "UserInfo": 
-                        {
-                            "employeeNo": str(instance.user_device_id),
-                            "name": str(instance.first_name + " " + instance.last_name),
-                            "userType": instance.profile_type,
-                            "gender": instance.gender,
-                            "Valid": {
-                                "enable": instance.is_active,
-                                "beginTime": begin_time_str,
-                                "endTime": end_time_str,
-                                "timeType": instance.timeType
-                            },
-                            "doorRight": instance.doorRight,
-                            "RightPlan": [
-                                {
-                                    "doorNo": instance.doorNo,
-                                }
-                            ],
-                            "localUIRight": instance.is_staff,
-                            "userVerifyMode": instance.userVerifyMode
+                if int(numero_encoder_released_date) <= 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                "doorRight": instance.doorRight,
+                                "RightPlan": [
+                                    {
+                                        "doorNo": instance.doorNo,
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
                         }
-                    }
+
+                    print('Firmware viejo')
+
+                elif int(numero_encoder_released_date) > 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                #"doorRight": instance.doorRight,
+                                "RightPlan": [
+                                    {
+                                        #"doorNo": instance.doorNo,
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
+                        }
+                    
+                    print('Firmware nuevo')
+
 
                 print("Probemos para ver device: ")
                 print(instance.subject)
@@ -567,6 +804,31 @@ def send_user_data(sender, instance, created, **kwargs):
                 print(ip_seleccionada)
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_MODIFY_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -574,29 +836,61 @@ def send_user_data(sender, instance, created, **kwargs):
                 begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
                 end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
 
-                data = {
-                    "UserInfo": 
-                        {
-                            "employeeNo": str(instance.user_device_id),
-                            "name": str(instance.first_name + " " + instance.last_name),
-                            "userType": instance.profile_type,
-                            "gender": instance.gender,
-                            "Valid": {
-                                "enable": instance.is_active,
-                                "beginTime": begin_time_str,
-                                "endTime": end_time_str,
-                                "timeType": instance.timeType
-                            },
-                            "doorRight": instance.doorRight,
-                            "RightPlan": [
-                                {
-                                    "doorNo": instance.doorNo,
-                                }
-                            ],
-                            "localUIRight": instance.is_staff,
-                            "userVerifyMode": instance.userVerifyMode
+                if int(numero_encoder_released_date) <= 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                "doorRight": instance.doorRight,
+                                "RightPlan": [
+                                    {
+                                        "doorNo": instance.doorNo,
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
                         }
-                    }
+
+                    print('Firmware viejo')
+
+                elif int(numero_encoder_released_date) > 191119:
+
+                    data = {
+                        "UserInfo": 
+                            {
+                                "employeeNo": str(instance.user_device_id),
+                                "name": str(instance.first_name + " " + instance.last_name),
+                                "userType": instance.profile_type,
+                                "gender": instance.gender,
+                                "Valid": {
+                                    "enable": instance.is_active,
+                                    "beginTime": begin_time_str,
+                                    "endTime": end_time_str,
+                                    "timeType": instance.timeType
+                                },
+                                #"doorRight": instance.doorRight,
+                                "RightPlan": [
+                                    {
+                                        #"doorNo": instance.doorNo,
+                                    }
+                                ],
+                                "localUIRight": instance.is_staff,
+                                "userVerifyMode": instance.userVerifyMode
+                            }
+                        }
+
+                    print('Firmware viejo')
 
                 response = requests.put(
                     full_url,
