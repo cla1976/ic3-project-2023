@@ -175,6 +175,7 @@ class UserProfile(models.Model):
     user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Tipo de usuario dentro de la institución")
     card = models.CharField(unique=True, max_length=20, blank=True, null=True, verbose_name="Tarjeta")
     cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta")
+    user_verify_mode = models.CharField(max_length=30, choices=VERIFYMODE, verbose_name="Tipo de verificación", null=True)
     timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora")
 
     def clean(self): #Posibles errores relacionados a tarjeta 
@@ -211,13 +212,10 @@ class UserProfile(models.Model):
 class UserProfileStudent(models.Model):
     user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
     subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir", blank=True)
-    user_verify_mode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación", null=True)
     door_right = models.CharField(max_length=100, verbose_name="Puerta proxima", null=True)
     doorNo = models.CharField(max_length=100, verbose_name="Número de puerta", null=True)
     date_created = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha creación", null=True)
     last_updated = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha actualización", null=True)
-    card = models.CharField(max_length=20, blank=True, verbose_name="Tarjeta", null=True)
-    card_type = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta", null=True)
     time_type = models.CharField(max_length=10, default='local', verbose_name="Modo de hora", null=True)
 
     class Meta:

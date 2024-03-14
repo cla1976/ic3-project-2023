@@ -576,8 +576,8 @@ def eventlistener(request):
         logging.info("POST request,\nPath: %s\nContent-Type: %s\nContent-Length: %s\n\nBody:\n%s\n", request.path, content_type, content_length, post_data)
         
         if b'"majorEventType":\t5' in post_data and b'"subEventType":\t6' in post_data:
-            print("Se encontraron ambas subcadenas:")
-            print(post_data.decode('utf-8'))
+            # print("Se encontraron ambas subcadenas:")
+            # print(post_data.decode('utf-8'))
             send_telegram()
             send_email()
         else:

@@ -751,61 +751,6 @@ def send_image_data(sender, created, instance, **kwargs):
 # Se sube el JSON al dispositivo respectivo tanto como para el horario de la materia
 # como el plan de horario relacionado.
 
-@receiver(post_save, sender=UserProfile)
-def enviar_tarjeta(sender, created, instance, **kwargs):
-
-    GATEWAY_PORT = instance.device.door_port
-    GATEWAY_USER = instance.device.user
-    GATEWAY_PASSWORD = instance.device.password
-
-    if mockeo:
-        return
-
-    if created:
-        return 
-
-    if instance.card:
-        subject_schedules = instance.subject.all()
-        ips = []
-
-        for subject_schedule in subject_schedules:
-            device = subject_schedule.device
-            if device and device.is_active:  
-                ips.append(device.ip)
-
-        for ip_address in ips:
-
-            base_url = f'http://{ip_address}:{GATEWAY_PORT}'
-            record_url = f"{URL_DELETE_CARD}?format=json"
-            full_url = f"{base_url}{record_url}"
-
-            print("Se borra la tarjeta")
-
-            payload = {         
-                "CardInfoDelCond" : {
-                    "EmployeeNoList" : [{
-                    "employeeNo": str(instance.user_device_id)
-                    }]
-                }
-            }
-
-            response = requests.request("PUT", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
-
-            if response.status_code == 200:
-                print("Tarjeta borrada para ser reemplazada")
-                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
-                record_url = f"{URL_ADD_CARD}?format=json"
-                full_url = f"{base_url}{record_url}"
-
-                print("Acá se reemplaza la tarjeta")
-                payload = { 
-                    "CardInfo": {
-                        "employeeNo": str(instance.user_device_id),
-                        "cardNo": str(instance.card),
-                        "cardType": str(instance.cardType)
-                    }
-                }
-                
 #corregida
 @receiver(pre_save, sender=SubjectSchedule)
 def enviar_horario(sender, instance, **kwargs):
@@ -1061,6 +1006,27 @@ def post_save_user_profile(sender, instance, created, **kwargs):
         response = requests.post(url, data=json.dumps(data), headers=headers, auth=auth)
         if response.status_code == 200:
             print('Usuario agregado correctamente al dispositivo remoto.')
+            if instance.card:
+                base_url = f'http://{ip}:{door_port}'
+                record_url = f"{URL_ADD_CARD}?format=json"
+                full_url = f"{base_url}{record_url}"
+
+                payload = { 
+                    "CardInfo": {
+                        "employeeNo": str(instance.dni),
+                        "cardNo": str(instance.card),
+                        "cardType": str(instance.cardType)
+                    }
+                }
+
+                print(payload)
+                            
+                response = requests.request("POST", full_url, data=json.dumps(payload), auth= auth)
+
+                if response.status_code == 200:
+                    print("Tarjeta creada y enviada correctamente!")
+                else:
+                    raise Exception("Error enviando tarjeta al dispositivo: {}".format(response.text))
         else:
             print('Error al agregar el usuario al dispositivo remoto. Código de estado:', response.status_code)
             print('Respuesta del servidor:', response.text)
@@ -1114,6 +1080,41 @@ def post_save_user_profile(sender, instance, created, **kwargs):
             response = requests.put(url, data=json.dumps(data), headers=headers, auth=auth)
             if response.status_code == 200:
                 print('Usuario modificado correctamente.')
+                if instance.card:
+                    base_url = f'http://{ip}:{door_port}'
+                    record_url = f"{URL_DELETE_CARD}?format=json"
+                    full_url = f"{base_url}{record_url}"
+
+                    payload = {         
+                        "CardInfoDelCond" : {
+                            "EmployeeNoList" : [{
+                            "employeeNo": str(instance.dni)
+                            }]
+                        }
+                    }
+
+                    response = requests.request("PUT", full_url, data=json.dumps(payload), auth= auth)
+
+                    if response.status_code == 200:
+                        print("Tarjeta borrada para ser reemplazada")
+                        base_url = f'http://{ip}:{door_port}'
+                        record_url = f"{URL_ADD_CARD}?format=json"
+                        full_url = f"{base_url}{record_url}"
+
+                        payload = { 
+                            "CardInfo": {
+                                "employeeNo": str(instance.dni),
+                                "cardNo": str(instance.card),
+                                "cardType": str(instance.cardType)
+                            }
+                        }
+                    
+                    response = requests.request("POST", full_url, data=json.dumps(payload), auth= auth)
+
+                    if response.status_code == 200:
+                        print("Tarjeta modificada correctamente!")
+                    else:
+                        raise Exception("Error enviando tarjeta al dispositivo: {}".format(response.text))
             else:
                 print('Error al modificar el usuario en el dispositivo remoto. Código de estado:', response.status_code)
                 print('Respuesta del servidor:', response.text)
