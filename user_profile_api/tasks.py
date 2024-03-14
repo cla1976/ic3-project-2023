@@ -10,6 +10,7 @@ from user_profile_api.urls_services import URL_RECORD_USER, URL_SEARCH_USER
 from user_profile_api.models import Device, UserProfile
 from django.db.models.signals import post_save
 from .signals import post_save_user_profile
+from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 
 @shared_task
 def sincronize_users():

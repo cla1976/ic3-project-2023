@@ -99,6 +99,23 @@
         #my-form button:hover {
           background-color: #333333;
         }
+        #my-form2 button {
+        padding: 10px 20px;
+        background-color: #3c45ca;
+        color: #white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-left: 20px;
+        font-weight: bold;
+        font-size: small;
+        border-bottom: 5px solid #090f5f;
+      }
+      #my-form2 button:hover {
+        background-color: #333333;
+      }
+
       </style>
   </head>
   <body>
@@ -108,7 +125,12 @@
       </div>
       <div id="form-container">
         <form id="my-form">
-          <button id="openDoorButton" type="button">Abrir Puerta</button>
+          <button id="openDoorButton" type="button">Abrir puerta {{ device }}</button>
+        </form>
+        <form id="my-form2">
+          <a href="{{ link3 }}{{ device }}" target="_blank">
+            <button type="button" data-value="{{ device }}">Sacar foto {{ device }}</button>
+          </a>
         </form>
       </div>
     </div>

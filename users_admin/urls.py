@@ -15,13 +15,36 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from user_profile_api.views import massive_door_opening, video_individual, video, show_doors, show_doors_devices, video_open_door, show_users_devices, show_users, get_users, show_events, show_events_devices, GetEventsView, GetDoorsView, schedule_career, schedule_career_home, schedule_career_home_year, enviar_telegram, enviar_telegram_usuarios, GetCardCode, eventlistener
+from user_profile_api.views import (
+    GetCardCode,
+    GetDoorsView,
+    GetEventsView,
+    GetFingerprint,
+    get_users,
+    schedule_career,
+    schedule_career_home,
+    schedule_career_home_year,
+    show_doors,
+    show_doors_devices,
+    show_events,
+    show_events_devices,
+    show_users,
+    show_users_devices,
+    video,
+    video_open_door,
+    massive_door_opening,
+    video_individual,
+    enviar_telegram, 
+    enviar_telegram_usuarios, 
+    eventlistener,
+)
 
 urlpatterns = [
     path('video/', video, name='video'),
     path('video/massive_door_opening/', massive_door_opening, name='massive_door_opening'),
     path('video/individual/<str:device>/', video_individual, name='video_individual'),
     path('video/open_door/<str:device>/', video_open_door, name='video_open_door'),
+    path('video/massive_door_opening/', massive_door_opening, name='massive_door_opening'),
     path('show_users/<str:device>/get_users/', get_users, name='get_users'),
     path('show_events/<str:device>/get_events/', GetEventsView.as_view(), name='get_events'),
     path('show_doors/<str:device>/show_doors/', GetDoorsView.as_view(), name='get_doors'),
@@ -39,5 +62,8 @@ urlpatterns = [
     path('eventlistener/', eventlistener, name='eventlistener'),
     path('user_profile_api/userprofile/<str:id>/<str:action>/get_qrcode/', GetCardCode.as_view(), name='get_qrcode'),
     path('user_profile_api/userprofile/add/get_qrcode/', GetCardCode.as_view(), name='get_qrcode'),
+    path('user_profile_api/userprofile/<str:id>/<str:action>/get_fingerprint/', GetFingerprint.as_view(), name='get_fingerprint'),
+    path('user_profile_api/userprofile/add/get_fingerprint/', GetFingerprint.as_view(), name='get_fingerprint'),
+
     path('', admin.site.urls)
 ]

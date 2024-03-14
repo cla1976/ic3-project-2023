@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'multiselectfield',
     'user_profile_api',
     'celery',
-    'qrcode'
+    'qr_code',
 ]
 
 CELERY_BEAT_SCHEDULE = {
@@ -129,6 +129,10 @@ MIDDLEWARE = [
     'user_profile_api.middleware.SpecificPageMiddleware',
 ]
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher"
+]
+
 ROOT_URLCONF = 'users_admin.urls'
 
 TEMPLATES = [
@@ -156,7 +160,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'ic3unrafproject',
-        'USER': 'root',
+        'USER': 'admin',
         'PASSWORD': utils.get_secret('DB_PASSWORD'),
         'HOST': 'localhost',
         'PORT': '3306',
@@ -225,8 +229,11 @@ GATEWAY_PASSWORD = utils.get_secret('GATEWAY_PASSWORD')
 DEVICE_UUID = 'D76C6D74-4B20-4BB1-8C4C-B51244DF3026'
 GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
 GATEWAY_ONE_CAMERA = utils.get_secret('GATEWAY_ONE_CAMERA')
+GATEWAY_CAMERA_SCREENSHOT = utils.get_secret('GATEWAY_CAMERA_SCREENSHOT')
 
 #BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
+
+HASHID_FIELD_SALT = utils.get_secret('HASHID_FIELD_SALT')
 
 #MEDIA_URL = '/media/'
 #MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -58,7 +58,9 @@ VERIFYMODE = (('cardOrFace', 'Tarjeta o cara'),
               ('cardOrPw', 'Tarjeta o clave'),
               ('card', 'Tarjeta'),
               ('cardOrFace', 'Cara o clave'),
-              ('face', 'Cara'))
+              ('face', 'Cara'),
+              ('cardOrFaceOrFp', 'Cara, tarjeta o huella'),
+              ('fpOrface', 'Cara o huella'))
 
 class Device(models.Model):
 
@@ -177,7 +179,8 @@ class UserProfile(models.Model):
     cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta")
     user_verify_mode = models.CharField(max_length=30, choices=VERIFYMODE, verbose_name="Tipo de verificación", null=True)
     timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora")
-
+    fingerprint = models.TextField(blank=True, null=True)
+    
     def clean(self): #Posibles errores relacionados a tarjeta 
         super().clean()
         if self.card and not self.cardType:

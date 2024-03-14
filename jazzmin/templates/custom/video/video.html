@@ -2,29 +2,21 @@
 <script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
 
 <script>
-  $(document).ready(function () {
-    $('#select-device').change(function() {
-      let selectedDevice = $(this).val(); 
-      
-      let links = {
-        {% for device in devices %}
-        '{{ device }}': 'individual/' + '{{device}}' + '/',
-        {% endfor %}
-      };
-
-      if (links[selectedDevice]) {
-        window.location.href = links[selectedDevice];
-      } else {
-        console.log('No hay enlace asociado para el dispositivo seleccionado.');
-      }
-  });
-});
-</script>
-
-<script>
-  // Botón nuevo para abrir todas las puertas
-  $(document).ready(function () {
-    $("#openAllButton").click(function (event) {
+  $(document).ready(function() {
+      $("#myInput").on("keyup", function() {
+          var value = $(this).val().toLowerCase();
+          $(".dropdown-menu li").filter(function() {
+              $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+          });
+      });
+  
+      $(".dropdown-menu li a").click(function() {
+          var device = $(this).text();
+          var url = 'individual/' + device + '/';
+          window.location.href = url;
+      });
+  
+      $("#openAllButton").click(function (event) {
         event.preventDefault();
         let url = "/video/massive_door_opening/";
         $.ajax({
@@ -32,12 +24,23 @@
           type: "GET",
           success: function (data) {
             console.log(data);
-            // Aquí puedes manejar la respuesta de la función si es necesario
           },
         });
       });
+  
+      $('.dropdown-btn').click(function() {
+          $(this).next('.dropdown-menu').toggle();
+      });
+  
+      $(document).on('click', function(event) {
+          if (!$(event.target).closest('.dropdown').length) {
+              $(".dropdown-menu").hide();
+          }
+      });
   });
-</script>
+  </script>
+  
+
 
 <html>
   <head>
@@ -92,27 +95,63 @@
       #my-form button:hover {
         background-color: #333333;
       }
+      .dropdown-btn {
+          padding: 10px 20px;
+          background-color: #337ab7;
+          color: #fff;
+          border: none;
+          border-radius: 5px;
+          font-size: 16px;
+          cursor: pointer;
+          margin-bottom: 10px;
+      }
+
+      .dropdown-menu {
+          display: none;
+          position: absolute;
+          background-color: #f9f9f9;
+          min-width: 160px;
+          box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+          z-index: 1;
+      }
+
+      .dropdown-menu li {
+          padding: 12px 16px;
+          text-decoration: none;
+          display: block;
+      }
+
+      .dropdown-menu li a {
+          color: #333;
+      }
+
+      .dropdown-menu li a:hover {
+          background-color: #ddd;
+      }
     </style>
   </head>
   <body>
     <div id="container">
-      <div id="selection-container">
-        <label for="select-device">Selecciona un dispositivo:</label>
-        <select id="select-device">
-          <option value="">Ninguno</option> 
-          {% for device in devices %}
-            <option value="{{ device }}">{{ device }}</option>
-          {% endfor %}
-        </select>
+      <div class="dropbox-">
+        <h2>Selecciona un dispositivo:</h2>
+        <div class="dropdown">
+            <button class="dropdown-btn">Dispositivos ▼</button>
+            <ul class="dropdown-menu">
+                <input class="form-control" id="myInput" type="text" placeholder="Buscar dispositivos..">
+                {% for device in devices %}
+                <li><a href="#">{{ device }}</a></li>
+                {% endfor %}
+            </ul>
+          </div>
       </div>
         <div id="video-container">
             <iframe src=" {{ link }}" width="100%" height="100%" frameborder="0"></iframe>
         </div>
-      <div id="form-container">
-        <form id="my-form">
-          <button id="openAllButton" type="button">Abrir Todas</button>
-        </form>
-      </div>
+            <div id="form-container">
+              <form id="my-form">
+                <button id="openAllButton" type="button">Apertura masiva puertas</button>
+              </form>
+            </div>
     </div>
   </body>
 </html>

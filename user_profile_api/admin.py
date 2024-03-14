@@ -8,11 +8,24 @@ from django import forms
 from user_profile_api.models import UserTypes, UserProfile, UserProfileStudent, UserProfileMaintenance, Room, Subject, Device, Career, CareerSubjectYear, SubjectSchedule, EventsDescription
 from django.utils import timezone
 from user_profile_api.services import get_default_user_device_id, get_default_schedule_id
+from django.http import HttpResponse
+from users_admin.settings import HASHID_FIELD_SALT
+from django.contrib.auth.hashers import make_password, check_password
 from .forms import DeviceForm, UserProfileForm, UserProfileStudentForm, UserProfileMaintenanceForm
 from django.utils.html import format_html
 import qrcode
-import base64
+import base64 
+from io import BytesIO
+from PIL import Image, ImageDraw
 import re
+
+class UserProfileForm(forms.ModelForm):
+    fingerprint = forms.CharField(widget=forms.PasswordInput, required=False)
+    
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+
 
 class UserProfileStudentInline(admin.StackedInline):
     model = UserProfileStudent
@@ -28,7 +41,7 @@ class UserProfileMaintenanceInline(admin.StackedInline):
 class ManageUser(admin.ModelAdmin):
     inlines = [UserProfileStudentInline, UserProfileMaintenanceInline]
     form = UserProfileForm
-    list_display=('device', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type', 'qr_code', 'download_qr')
+    list_display=('device', 'dni', 'first_name', 'last_name', 'email', 'phone','user_type', 'qr_code', 'download_qr', 'huella')
     ordering=('first_name','last_name')
     search_fields= ('dni', 'email', 'phone', 'first_name', 'last_name')
     list_per_page=50
@@ -36,7 +49,47 @@ class ManageUser(admin.ModelAdmin):
     exclude = ('planTemplateNo',)
     #readonly_fields=('date_created', 'last_updated', 'timeType')
 
+    def huella(self, obj):
+            if obj.fingerprint == '':
+                img = Image.new('RGB', (160, 160), color = (256, 256, 256))
+
+                d = ImageDraw.Draw(img)
+
+                d.line((0, 0) + img.size, fill=128)
+                d.line((0, img.size[1], img.size[0], 0), fill=128)
+
+                buffered = BytesIO()
+                img.save(buffered, format="PNG")
+
+                img_str = base64.b64encode(buffered.getvalue()).decode()
+
+                return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+                
+            else:
+                img = Image.open('jazzmin/static/custom/huella.png')
+                new_size = (130, 160) 
+                img = img.resize(new_size)
+                buffered = BytesIO()
+
+                img.save(buffered, format="PNG")
+                img_str = base64.b64encode(buffered.getvalue()).decode()
+                return format_html('<img src="data:image/png;base64,{}"/>', img_str)
+                
+    huella.short_description= 'Huella digital'
+
     def save_model(self, request, obj, form, change):
+        if 'fingerprint' in form.changed_data and not form.cleaned_data['fingerprint']:
+            obj.fingerprint = UserProfile.objects.get(pk=obj.pk).fingerprint
+        
+        obj.last_updated = timezone.now()
+        
+        some_salt = HASHID_FIELD_SALT
+        print(some_salt)
+        plano = obj.fingerprint
+        plano = make_password(obj.fingerprint, salt=some_salt, hasher='argon2')
+        print(plano)
+        print(obj.fingerprint)
+        #check_password(plano, obj.fingerprint,preferred='argon2')
         super().save_model(request, obj, form, change)
 
     def get_form(self, request, obj=None, **kwargs):

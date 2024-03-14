@@ -15,6 +15,7 @@ from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
 from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS, GATEWAY_ONE_CAMERA
+from users_admin.settings import GATEWAY_CAMERA_SCREENSHOT
 from user_profile_api.urls_services import (
     URL_STREAM_101,
     URL_OPEN_DOOR_1,
@@ -23,6 +24,7 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_DOOR_1,
     URL_DOOR_LOCKTYPE,
+    URL_FINGERPRINTING,
 )
 import datetime
 from django.utils import timezone
@@ -40,6 +42,9 @@ import logging
 from user_profile_api.notifications import send_email, send_telegram
 import random
 import string
+from django.contrib import messages
+from django.utils import timezone
+from users_admin.settings import GATEWAY_USER, GATEWAY_PASSWORD
 
 def check_admin(user):
    return user.is_superuser
@@ -60,6 +65,8 @@ def video(request):
     src_params = [f'src={device}' for device in devices]
     link += '&'.join(src_params)
     link += '&mode=webrtc'
+    link2 = GATEWAY_ONE_CAMERA
+
 
     print(link)
 
@@ -84,11 +91,13 @@ def video_individual(request, device):
 
     link = GATEWAY_ONE_CAMERA
     link += f'{device_obj.device}&mode=webrtc'
+    link3 = GATEWAY_CAMERA_SCREENSHOT
 
     print(link)
 
     context = {
         'link': link,
+        'link3': link3,
         'device': device_obj.device
     }
 
@@ -293,6 +302,51 @@ def get_users(request, device):
     response = requests.post(full_url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
     users = response.json()
     return JsonResponse({'users': users['UserInfoSearch']['UserInfo']})
+
+
+class GetFingerprint(TemplateView):
+    template_name = 'admin/submit_line.html'
+
+    def post(self, request, *args, **kwargs):
+        ip = request.POST.get('dispositivos-lectores')
+        base_url = "http://" + '192.168.1.203' + ":85"
+        record_url = f"{URL_FINGERPRINTING}?format=xml"
+        full_url = f"{base_url}{record_url}"
+        payload = "<CaptureFingerPrintCond><fingerNo>1</fingerNo></CaptureFingerPrintCond>"
+        headers = {
+            'Content-Type': 'application/xml'
+        }
+
+        print("Se activó")
+        
+        print(full_url)
+        response = requests.post(full_url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+
+        root = ET.fromstring(response.text)
+        finger_data = root.find('.//{http://www.isapi.org/ver20/XMLSchema}fingerData').text
+
+
+        print(response.text)
+ 
+
+        return JsonResponse({'msg': finger_data})
+
+class GetCardCode(TemplateView):
+    template_name = 'admin/submit_line.html'
+
+    def post(self, request, *args, **kwargs):
+        
+        def generar_id(longitud):
+            caracteres = string.ascii_letters + string.digits  
+            return ''.join(random.choice(caracteres) for _ in range(longitud))
+
+        longitud_id = random.randint(17, 20)
+        id_unico = generar_id(longitud_id)
+
+        return JsonResponse({'codecard': id_unico})
+
+
 
 class GetEventsView(TemplateView):
     template_name = 'custom/show_events/show_events.html'

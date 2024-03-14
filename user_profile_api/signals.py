@@ -3,8 +3,11 @@ from django.dispatch import receiver
 import requests
 import yaml
 import json, base64
-from datetime import datetime, timedelta
+import time
+from datetime import datetime
 from user_profile_api.middleware import specific_page_loaded
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta
 from django.conf import settings
 from django.utils import timezone 
 
@@ -20,9 +23,13 @@ from user_profile_api.urls_services import (
     URL_UserRightWeekPlanCfg,
     URL_UserRightPlanTemplate,
     URL_FaceDataRecord,
+    URL_UPLOAD_FINGERPRINT,
+    URL_DELETE_FINGERPRINT,
+    URL_CHECK_FINGER_CAPABILITIES,
     URL_ADD_CARD,
     URL_MODIFY_CARD,
-    URL_DELETE_CARD
+    URL_DELETE_CARD,
+    URL_DEVICE_INFO,
 )
 from users_admin.settings import DEVICE_UUID
 from requests.auth import HTTPDigestAuth
@@ -31,6 +38,7 @@ from django.db.models import F
 from unidecode import unidecode
 from requests.auth import HTTPDigestAuth
 import time
+from users_admin.settings import GATEWAY_USER, GATEWAY_PASSWORD
 
 # Archivo de señales. Se activan funcionalidades que están ligadas al panel de administración
 # que trae por defecto Django basandose en detección de cambios en los modelos 
@@ -137,6 +145,31 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 print(plan_template_no)
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_RECORD_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -168,7 +201,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                             "userVerifyMode": instance.userVerifyMode
                         }
                     }
-
+                    
                 response = requests.post(
                     full_url,
                     headers=headers,
@@ -179,39 +212,91 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 if response.status_code == 200:
                         print("Usuario creado y cargado con la API y CAMPO")
                         if instance.fileImage:
-
-                            ips = []
-
-                            for subject_schedule in subject_schedules:
-                                device = subject_schedule.device
-                                if device and device.is_active:  
-                                    ips.append(device.ip)
-
-                            print(ips)
-
-                            for ip_address in ips:
                                 
-                                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
-                                record_url = f"{URL_RECORD_IMAGE}?format=json"
+                            base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                            record_url = f"{URL_RECORD_IMAGE}?format=json"
+                            full_url = f"{base_url}{record_url}"
+                                
+                            print("Acá es 1")
+
+                            payload = {
+                                "FaceDataRecord": json.dumps({
+                                    "faceLibType": "blackFD",
+                                    "FDID": "1",
+                                    "FPID": str(instance.user_device_id)
+                                })
+                            }
+
+                            files = {
+                                'img': ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
+                            }
+
+                            print(payload)
+
+
+                            response = requests.put(full_url, data=payload, files=files, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                            if response.status_code == 200:
+                                print("Image created succesfully and sent to API!")
+                                print("User created successfully and data sent to API!")
+                            else:
+                                raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
+
+                        if instance.fingerprint:
+                            base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                            record_url = f"{URL_CHECK_FINGER_CAPABILITIES}?format=json"
+                            full_url = f"{base_url}{record_url}"
+
+                            print("Acá se crea con fingerprint")
+
+                            response = requests.get(full_url, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                            if response.status_code == 200:
+                                print(instance.fingerprint)
+                                base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                                record_url = f"{URL_UPLOAD_FINGERPRINT}?format=json"
                                 full_url = f"{base_url}{record_url}"
-                                    
-                                print("Acá es 1")
 
                                 payload = {
-                                    "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.dni) + '"}', 'application/json'),
-                                    "img": ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
+                                    "FingerPrintCfg": {
+                                        "employeeNo": str(instance.user_device_id),
+                                        "fingerPrintID": 1,
+                                        "enableCardReader": [1],
+                                        "fingerType": "normalFP",
+                                        "fingerData": instance.fingerprint
+                                    }
                                 }
 
-                                print(payload)
-
-
-                                response = requests.put(full_url, files=payload, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+                                response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
 
                                 if response.status_code == 200:
-                                    print("Image created succesfully and sent to API!")
-                                    print("User created successfully and data sent to API!")
+                                    print("Huella creada y enviada correctamente!")
                                 else:
-                                    raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
+                                    raise Exception("Error enviando huella al dispositivo: {}".format(response.text))
+
+                        if instance.card:
+                            base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
+                            record_url = f"{URL_ADD_CARD}?format=json"
+                            full_url = f"{base_url}{record_url}"
+
+                            print("Acá se crea con tarjeta")
+                            payload = { 
+                                "CardInfo": {
+                                    "employeeNo": str(instance.user_device_id),
+                                    "cardNo": str(instance.card),
+                                    "cardType": str(instance.cardType)
+                                }
+                            }
+
+                            print(payload)
+
+                            response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                            if response.status_code == 200:
+                                print("Tarjeta creada y enviada correctamente!")
+                            else:
+                                raise Exception("Error enviando tarjeta al dispositivo: {}".format(response.text))
+
 
                         if instance.card:
                             base_url = f'http://{ip_seleccionada}:{GATEWAY_PORT}'
@@ -262,12 +347,38 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                     return
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_MODIFY_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
 
                 begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
                 end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
+                
 
                 data = {
                     "UserInfo": 
@@ -293,7 +404,8 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                             "userVerifyMode": instance.userVerifyMode
                         }
                     }
-
+                
+                    
                 response = requests.put(
                     full_url,
                     headers=headers,
@@ -331,6 +443,31 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                     return
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_MODIFY_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -362,6 +499,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                             "userVerifyMode": instance.userVerifyMode
                         }
                     }
+
 
                 response = requests.put(
                     full_url,
@@ -482,6 +620,31 @@ def send_user_data(sender, instance, created, **kwargs):
 
             for ip_address, GATEWAY_PORT, GATEWAY_USER, GATEWAY_PASSWORD in zip(ips, door_ports, users, passwords):
 
+                base_url = "http://{}:{}".format(ip_address, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
                 base_url = f'http://{ip_address}:{GATEWAY_PORT}'
                 record_url = f"{URL_RECORD_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
@@ -555,6 +718,31 @@ def send_user_data(sender, instance, created, **kwargs):
                 print(ip_seleccionada)
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_DEVICE_INFO}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    data=json.dumps(data),
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                root = ET.fromstring(response.text)
+
+                encoder_released_date_element = root.find(".//{http://www.isapi.org/ver20/XMLSchema}encoderReleasedDate")
+                
+                if encoder_released_date_element is None:
+                    encoder_released_date_element = root.find(".//encoderReleasedDate")
+
+                encoder_released_date_text = encoder_released_date_element.text
+                numero_encoder_released_date = encoder_released_date_text.split("build")[1].strip()
+
+                print('Version firmware')
+                print(numero_encoder_released_date)
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_MODIFY_USER}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -585,6 +773,7 @@ def send_user_data(sender, instance, created, **kwargs):
                             "userVerifyMode": instance.userVerifyMode
                         }
                     }
+            
 
                 response = requests.put(
                     full_url,
@@ -733,19 +922,109 @@ def send_image_data(sender, created, instance, **kwargs):
                     
 
                     payload = {
-                        "FaceDataRecord": ('', '{"faceLibType":"blackFD","FDID":"1","FPID":"' + str(instance.dni) + '"}', 'application/json'),
-                        "img": ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
+                        "FaceDataRecord": json.dumps({
+                            "faceLibType": "blackFD",
+                            "FDID": "1",
+                            "FPID": str(instance.dni)
+                        })
+                    }
+
+                    files = {
+                        'img': ('Imagen', open(str(instance.fileImage), 'rb'), 'image/jpeg')
                     }
 
                     print(payload)
 
-                    response = requests.put(full_url, files=payload, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                    response = requests.put(full_url, data=payload, files=files, auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
 
                     if response.status_code == 200:
                         print("Image created succesfully and sent to API!")
                         print("User created successfully and data sent to API!")
                     else:
                         raise Exception("Error enviando la imagen al dispositivo: {}".format(response.text))
+
+@receiver(post_save, sender=UserProfile)
+def enviar_huella(sender, created, instance, **kwargs):
+    if mockeo:
+        return
+
+    if created:
+        return 
+    
+    if instance.fingerprint:
+        #subject_schedules = instance.subject.all()
+        ips = ['192.168.1.203']
+        GATEWAY_PORT = '85'
+       # for subject_schedule in subject_schedules:
+       #     device = subject_schedule.device
+       #     if device and device.is_active:  
+       #         ips.append(device.ip)
+
+        for ip_address in ips:
+            base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+            record_url = f"{URL_CHECK_FINGER_CAPABILITIES}?format=json"
+            full_url = f"{base_url}{record_url}"
+
+            response = requests.get(full_url, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            if response.status_code == 200:
+
+                base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                record_url = f"{URL_DELETE_FINGERPRINT}?format=json"
+                full_url = f"{base_url}{record_url}"
+
+                print("Acá es 10")
+                #print(instance.fingerprint)
+                #print(plano)
+
+                payload = {
+                    "FingerPrintDelete":{
+                        "mode":"byEmployeeNo",
+                        "EmployeeNoDetail":{
+                        "employeeNo": str(instance.dni)
+                        }
+                    }
+                }
+
+                print(full_url)
+
+                response = requests.request("PUT", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                if response.status_code == 200:
+                    print("Huella borrada para modificar")
+
+                    time.sleep(1)
+
+                    base_url = f'http://{ip_address}:{GATEWAY_PORT}'
+                    record_url = f"{URL_UPLOAD_FINGERPRINT}?format=json"
+                    full_url = f"{base_url}{record_url}"
+
+                    #print(instance.fingerprint)
+                    #print(plano)
+
+                    print(full_url)
+
+                    payload = {
+                        "FingerPrintCfg": {
+                            "employeeNo": str(instance.dni),
+                            "fingerPrintID": 1,
+                            "enableCardReader": [1],
+                            "fingerType": "normalFP",
+                            "fingerData": instance.fingerprint
+                        }
+                    }
+
+                    response = requests.request("POST", full_url, data=json.dumps(payload), auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+                    if response.status_code == 200:
+                        print("Huella modificada y enviada correctamente!")
+                    else:
+                        raise Exception("Error enviando huella al dispositivo: {}".format(response.text))
+
+                else:
+                    raise Exception("Error borrando la huella para modificar. Dispositivo: {}".format(response.text))   
 
 # Se activa luego de cargar un horario de materia en la tabla SubjectSchedule.
 # Se sube el JSON al dispositivo respectivo tanto como para el horario de la materia
@@ -847,6 +1126,7 @@ def enviar_horario(sender, instance, **kwargs):
         else:
             raise Exception("Error registrando el template de horario: {}".format(response.text))
     else:
+        print(full_url)
         raise Exception("Error registrando el horario: {}".format(response.text))
     
 
@@ -883,9 +1163,6 @@ def delete_user_data(sender, instance, **kwargs):
         GATEWAY_PASSWORD = password
 
         base_url = f'http://{ip_address}:{GATEWAY_PORT}'
-
-        print(base_url)
-
         record_url = f"{URL_DELETE_USER}?format=json"
         full_url = f"{base_url}{record_url}"
         headers = {"Content-type": "application/json"}
@@ -906,7 +1183,6 @@ def delete_user_data(sender, instance, **kwargs):
 
         if response.status_code == 200:
             print("User deleted successfully!")
-            instance.delete()
         else:
             print("Error: can't delete user")
             raise Exception("Failed to delete instance: {}".format(response.text))

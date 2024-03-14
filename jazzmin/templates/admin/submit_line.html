@@ -1,8 +1,8 @@
 {% load i18n admin_urls jazzmin %}
 {% get_jazzmin_ui_tweaks as jazzmin_ui %}
 {% load static %}
-
 {% block submit-row %}
+
 <div>
     {% if show_save %}
         <div class="form-group">
@@ -30,6 +30,26 @@
             <input type="submit" class="btn {{ jazzmin_ui.button_classes.info }} form-control" value="{% if can_change %}{% trans 'Save and continue editing' %}{% else %}{% trans 'Save and view' %}{% endif %}" name="_continue">
         </div>
     {% endif %}
+    {% if custom_button %}
+
+    <div class="form-group">
+        <button type="submit" id="print-button" class="btn {{ jazzmin_ui.button_classes.primary }} form-control" data-value="valor">
+            {% translate 'Escanear huella digital' %}
+        </button>
+    <div class="form-group">
+    {% endif %}
+
+    {% if show_copy_button %}
+    <div class="form-group">
+        <label for="{{ adminform.form.dni.id_for_label }}">Dispositivo a leer huella:</label>
+        <select name="dispositivos-lectores" id="dispositivos-lectores">
+            {% for value, label in adminform.form.dni.field.choices %}
+                <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    
     {% if show_close %}
         <div class="form-group">
             <a href="{% url opts|admin_urlname:'changelist' %}" class="btn {{ jazzmin_ui.button_classes.danger }} form-control">{% trans 'Close' %}</a>
