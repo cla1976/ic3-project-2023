@@ -75,12 +75,10 @@
         </div>
     {% endif %}
 
-
     {% block extra-actions %}{% endblock %}
 
 </div>
 {% endblock %}
-
 
 <script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
 
@@ -101,7 +99,7 @@ function fade_alerts() {
     $(document).ready(function() {
         $('#print-button').click(function(event) {
             event.preventDefault(); 
-                
+
             var device = $('#dispositivos-lectores').val();
             var url = 'get_fingerprint/';
             var csrf_token = $('input[name="csrfmiddlewaretoken"]').val();
@@ -124,7 +122,7 @@ function fade_alerts() {
         });
         $('#qr-button').click(function(event) {
             event.preventDefault(); 
-                
+
             var url = 'get_qrcode/';
             var csrf_token = $('input[name="csrfmiddlewaretoken"]').val();
 

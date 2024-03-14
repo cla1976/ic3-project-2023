@@ -29,7 +29,7 @@ SECRET_KEY = utils.get_secret('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -55,7 +55,6 @@ CELERY_BEAT_SCHEDULE = {
            'schedule': crontab(minute=0, hour='*/4'),
       },   
 }
-
 
 CELERY_ALWAYS_EAGER = False
 # Celery Configuration Options
@@ -201,6 +200,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'jazzmin/static'),
+]
+
 STATIC_URL = 'static/'
 
 # Default primary key field type
@@ -216,8 +219,9 @@ ENVIRONMENT = 'TEST'
 print('Environment:', ENVIRONMENT)
 
 # Gateway & Device Settings
-GATEWAY_IP = utils.get_secret('GATEWAY_IP')
-GATEWAY_IP2 = utils.get_secret('GATEWAY_IP2')
+#GATEWAY_IP = utils.get_secret('GATEWAY_IP')
+#GATEWAY_IP2 = utils.get_secret('GATEWAY_IP2')
+
 GATEWAY_PORT = '85'
 GATEWAY_RTSP = '554'
 GATEWAY_USER = 'admin'
@@ -227,7 +231,7 @@ GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
 GATEWAY_ONE_CAMERA = utils.get_secret('GATEWAY_ONE_CAMERA')
 GATEWAY_CAMERA_SCREENSHOT = utils.get_secret('GATEWAY_CAMERA_SCREENSHOT')
 
-BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
+#BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
 
 HASHID_FIELD_SALT = utils.get_secret('HASHID_FIELD_SALT')
 

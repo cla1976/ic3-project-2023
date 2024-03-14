@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from django.views import View
 from django.http import StreamingHttpResponse
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotFound
 from django.views.decorators.http import condition
 import cv2
 import imutils
@@ -14,7 +14,8 @@ import requests
 from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
-from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_IP2, GATEWAY_IP, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_ONE_CAMERA, GATEWAY_CAMERA_SCREENSHOT, GATEWAY_CAMERAS
+from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS, GATEWAY_ONE_CAMERA
+from users_admin.settings import GATEWAY_IP2, GATEWAY_IP, GATEWAY_CAMERA_SCREENSHOT
 from user_profile_api.urls_services import (
     URL_STREAM_101,
     URL_OPEN_DOOR_1,
@@ -26,19 +27,23 @@ from user_profile_api.urls_services import (
     URL_FINGERPRINTING,
 )
 import datetime
+from django.utils import timezone
 import json, base64
 from django.http import JsonResponse
 import hashlib
-from .models import SubjectSchedule, Device, EventsDescription
+from .models import EventsDescription, SubjectSchedule, Device
 from django.db.models import F
 import itertools
 import subprocess
-from django.contrib import messages
-import random 
-import string 
-from user_profile_api.notifications import send_email, send_telegram
-from django.utils import timezone
+from .models import UserProfile, EventsDescription
+from django.http import HttpResponseBadRequest
 from datetime import timedelta
+import logging
+from user_profile_api.notifications import send_email, send_telegram
+import random
+import string
+from django.contrib import messages
+from django.utils import timezone
 
 def check_admin(user):
    return user.is_superuser
@@ -64,6 +69,10 @@ def video(request):
 
     print(link3)
 
+    print(link)
+
+    link2 = GATEWAY_ONE_CAMERA
+
     context = {
         'link': link,
         'link2': link2,
@@ -73,6 +82,28 @@ def video(request):
 
     return render(request, "custom/video/video.html", context)
 
+# Vista de los dispositivos individuales
+
+@user_passes_test(check_admin)
+def video_individual(request, device):
+    try:
+        device_obj = Device.objects.get(device=device)
+    except Device.DoesNotExist:
+        return HttpResponseNotFound("Dispositivo no encontrado")
+
+    link = GATEWAY_ONE_CAMERA
+    link += f'{device_obj.device}&mode=webrtc'
+
+    print(link)
+
+    context = {
+        'link': link,
+        'device': device_obj.device
+    }
+
+    return render(request, "custom/video/video-individual.html", context)
+
+
 # Vista de la funcionalidad para abrir la puerta asignada a un dispositivo. 
 # Se activa con el pulsado de botón en una vista con plantilla anterior y
 # envía un JSON respectivo.
@@ -81,8 +112,12 @@ def video(request):
 def video_open_door(request, device):
     print(device)
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":85"
+    base_url = f"http://{ip}:{door_port}"
     door_url = f"{URL_OPEN_DOOR_1}?format=xml"
     url = f"{base_url}{door_url}"
     print(url)
@@ -91,7 +126,36 @@ def video_open_door(request, device):
         'Content-Type': 'application/xml'
     }
     response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
-    return HttpResponse('')
+    return HttpResponse('La puerta ha sido abierta')
+
+# Vista de la funcionalidad para realizar la apertura masiva de las puertas habilitadas.
+
+@user_passes_test(check_admin)
+def massive_door_opening(request):
+    devices = Device.objects.all()  # Obtén todos los dispositivos
+
+    for device in devices:
+        ip = device.ip
+        door_port = device.door_port
+        GATEWAY_USER = device.user
+        GATEWAY_PASSWORD = device.password
+        massive_opening = device.massive_opening
+
+        base_url = f"http://{ip}:{door_port}"
+        door_url = f"{URL_OPEN_DOOR_1}?format=xml"
+        url = f"{base_url}{door_url}"
+        payload = "<RemoteControlDoor xmlns=\"http://www.isapi.org/ver20/XMLSchema\" version=\"2.0\"><cmd>open</cmd></RemoteControlDoor>"
+        headers = {
+            'Content-Type': 'application/xml'
+        }
+        
+
+        if massive_opening:
+            response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            # Puedes agregar lógica adicional para manejar la respuesta de cada dispositivo si es necesario
+
+    return HttpResponse('Todas las puertas han sido abiertas')
 
 
 # Vista de la funcionalidad para modificar los parámetros de una puerta asignada a un
@@ -113,8 +177,11 @@ class GetDoorsView(TemplateView):
         leaderCardOpenDuration = request.POST.get('leaderCardOpenDuration')
 
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
+        door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+        GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+        GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-        base_url = "http://" + ip + ":85"
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_1}?format=xml"
         url = f"{base_url}{door_url}"
         print(url)
@@ -126,7 +193,7 @@ class GetDoorsView(TemplateView):
         }
         response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
         
-        base_url = "http://" + ip + ":85"
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_LOCKTYPE}?format=json"
         url = f"{base_url}{door_url}"
         print(url)
@@ -155,8 +222,11 @@ def show_doors(request, device):
     print(device)
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
     print(ip)
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":85"
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_DOOR_1}"
     full_url = f"{base_url}{record_url}"
 
@@ -176,7 +246,7 @@ def show_doors(request, device):
             enableLeaderCard = root.find('./{http://www.isapi.org/ver20/XMLSchema}enableLeaderCard').text
             leaderCardOpenDuration = root.find('./{http://www.isapi.org/ver20/XMLSchema}leaderCardOpenDuration').text
 
-            base_url = "http://" + ip + ":85"
+            base_url = f"http://{ip}:{door_port}"
             record_url = f"{URL_DOOR_LOCKTYPE}"
             full_url = f"{base_url}{record_url}"
 
@@ -209,10 +279,13 @@ def show_doors(request, device):
         print(f'Error de conexión: {e}')
 
 
-
 def get_users(request, device):
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
-    base_url = "http://" + ip + ":85"
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
+
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_SEARCH_USER}?format=json"
     full_url = f"{base_url}{record_url}"
     payload = json.dumps({
@@ -276,9 +349,24 @@ class GetCardCode(TemplateView):
 class GetEventsView(TemplateView):
     template_name = 'custom/show_events/show_events.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        device = self.kwargs.get('device')
+        context['device'] = device
+        context['users'] = UserProfile.objects.filter(device=device)
+
+        # Imprime el contenido de context['users'] en la terminal
+        print("Usuarios en contexto:", context['users'])
+
+        return context
+    
     def post(self, request, device, *args, **kwargs):
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
-        base_url = "http://" + ip + ":85"
+        door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+        GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+        GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
+
+        base_url = f"http://{ip}:{door_port}"
         record_url = f"{URL_AcsEvent}?format=json"
         full_url = f"{base_url}{record_url}"
 
@@ -288,82 +376,58 @@ class GetEventsView(TemplateView):
         desde = request.POST.get('desde', "")
         hasta = request.POST.get('hasta', "")
 
-        usuario = request.POST.get('usuarios', "")  # Inicializar usuario como una cadena vacía
-        username = ""
-        employee_no = "" 
-
-        if usuario:
-            # Utilizamos directamente el valor del usuario como el nombre de usuario
-            username = usuario
-
-            # Ahora puedes usar 'username' en tu vista según sea necesario
-            print("Nombre de usuario:", username)
-
-            # No necesitas convertir 'usuario' en un entero, ya que estamos tratando con el nombre de usuario
-        else:
-            # Si no se selecciona ningún usuario, dejar 'username' vacío
-            print("No se seleccionó ningún usuario")
-            username = ""
-            # Puedes dejar 'username' como una cadena vacía si no se selecciona ningún usuario
-
-            # No necesitas extraer el número de empleado ya que no se está utilizando
-
-
-        grupoevento = request.POST.get('grupoevento', "")
-        tipoevento = request.POST.get('tipoevento', "")
-        desde = request.POST.get('desde', "")
-        hasta = request.POST.get('hasta', "")
-
+        if grupoevento != "":
+            grupoevento = int(grupoevento)
+        
         if tipoevento != "":
             tipoevento = int(tipoevento)
         
-        if grupoevento != "":
-            grupoevento = int(grupoevento)
-
-        headers = {'Content-Type': 'application/json'}
-
-        # Realizar tres solicitudes con diferentes posiciones de resultado
-        events = []
-        for position in range(10):
-            payload = {
-                "AcsEventCond": {
-                    "searchID": "1",
-                    "searchResultPosition": position,
-                    "maxResults": 500,
-                    "major": grupoevento,
-                    #"minor": tipoevento,
-                    "minor": 0,
-                    "startTime": desde,
-                    "endTime": hasta,
-                    "timeReverseOrder": True 
-                }
+        print("Datos: ")
+        print(usuario)
+        print(grupoevento)
+        payload = {
+            "AcsEventCond": {
+                "searchID": "1",
+                "searchResultPosition": 0,
+                "maxResults": 1000,
+                "major": grupoevento,
+                "minor": tipoevento,
+                "startTime": desde,
+                "endTime": hasta
             }
-            
-            
-            # Verificar si 'username' está vacío
-            if username:
-                # Si 'username' no está vacío, incluirlo en el payload
-                payload['AcsEventCond']['name'] = username
+        }
 
-            payload_json = json.dumps(payload)
-            print(payload_json)
-            response = requests.post(full_url, headers=headers, data=payload_json, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
-            response_data = response.json()
-            events.extend(response_data.get('AcsEvent', {}).get('InfoList', []))
+        headers = {
+        'Content-Type': 'application/json'
+        }
 
-        if not events:
+        payload_json = json.dumps(payload)
+
+        print(payload_json)
+
+        response = requests.post(full_url, headers=headers, data=payload_json, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+        events = response.json()
+        print(response.text)
+ 
+        if events['AcsEvent']['responseStatusStrg'] == 'NO MATCH':
             return JsonResponse({})
+        else:
+            # Obtener los eventos como un diccionario
+            events = events['AcsEvent']['InfoList']
 
-        # Agregar la descripción del minor a cada evento
-        for event in events:
-            major = event.get('major')
-            minor = event.get('minor')
-            event['minor_description'] = EventsDescription.get_minor_description(major, minor)
-            
-        # Devolver los eventos actualizados como una respuesta JSON
-        return JsonResponse({'events': events, 'username': username})
-
-
+            # Agregar la descripción del minor a cada evento
+            for event in events:
+                major = event.get('major')
+                minor = event.get('minor')
+                event['minor_description'] = EventsDescription.get_minor_description(major, minor)
+                
+            # Devolver los eventos actualizados como una respuesta JSON
+            return JsonResponse({'events': events})
+        #if events['AcsEvent']['responseStatusStrg'] == 'NO MATCH':
+        #    return JsonResponse({})
+        #else:
+        #    return JsonResponse({'events': events['AcsEvent']['InfoList']})
+    
 @user_passes_test(check_admin)
 def show_doors_devices(request):
     dispositivos = Device.objects.values_list('device', flat=True).distinct()
@@ -474,7 +538,6 @@ def show_events(request, device):
     current_date2 = timezone.now().strftime('%Y-%m-%dT%H:%M')
     #current_date1 = timezone.now().replace(hour=0, minute=0).strftime('%Y-%m-%dT%H:%M')
     current_date1 = three_months_ago.strftime('%Y-%m-%dT%H:%M')
-    print ("usuarios", users_data)
     context = {
         'device': device,
         'users': users_data,
@@ -489,7 +552,6 @@ def show_events(request, device):
 #BOT TELEGRAM
 bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
 chat_id = '1309708511'
-
 
 def enviar_telegram(request): 
     if request.method == 'POST':
@@ -547,8 +609,7 @@ def enviar_telegram_usuarios(request):
             return HttpResponse("Mensaje y archivo enviados con éxito.")
         else:
             return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
-
-
+          
 @csrf_exempt
 def eventlistener(request):
     if request.method == 'POST':
@@ -558,7 +619,7 @@ def eventlistener(request):
         
         logging.info("POST request,\nPath: %s\nContent-Type: %s\nContent-Length: %s\n\nBody:\n%s\n", request.path, content_type, content_length, post_data)
         
-        if b'"majorEventType":\t5' in post_data and b'"subEventType":\t21' in post_data:
+        if b'"majorEventType":\t5' in post_data and b'"subEventType":\t6' in post_data:
             print("Se encontraron ambas subcadenas:")
             print(post_data.decode('utf-8'))
             send_telegram()
@@ -570,50 +631,16 @@ def eventlistener(request):
     else:
         return HttpResponse(status=405)
 
-@user_passes_test(check_admin)
-def massive_door_opening(request):
-    devices = Device.objects.all()  # Obtén todos los dispositivos
+class GetCardCode(TemplateView):
+    template_name = 'admin/submit_line.html'
 
-    for device in devices:
-        ip = device.ip
-        door_port = GATEWAY_PORT
-        #GATEWAY_USER = device.user
-        #GATEWAY_PASSWORD = device.password
-        massive_opening = device.massive_opening
+    def post(self, request, *args, **kwargs):
 
-        base_url = f"http://{ip}:{door_port}"
-        door_url = f"{URL_OPEN_DOOR_1}?format=xml"
-        url = f"{base_url}{door_url}"
-        payload = "<RemoteControlDoor xmlns=\"http://www.isapi.org/ver20/XMLSchema\" version=\"2.0\"><cmd>open</cmd></RemoteControlDoor>"
-        headers = {
-            'Content-Type': 'application/xml'
-        }
-        
+        def generar_id(longitud):
+            caracteres = string.ascii_letters + string.digits  
+            return ''.join(random.choice(caracteres) for _ in range(longitud))
 
-        if massive_opening == True:
-            response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+        longitud_id = random.randint(17, 20)
+        id_unico = generar_id(longitud_id)
 
-            # Puedes agregar lógica adicional para manejar la respuesta de cada dispositivo si es necesario
-
-    return HttpResponse('Todas las puertas han sido abiertas')
-
-@user_passes_test(check_admin)
-def video_individual(request, device):
-    try:
-        device_obj = Device.objects.get(device=device)
-    except Device.DoesNotExist:
-        return HttpResponseNotFound("Dispositivo no encontrado")
-
-    link = GATEWAY_ONE_CAMERA
-    link += f'{device_obj.device}&mode=webrtc'
-    link3 = GATEWAY_CAMERA_SCREENSHOT
-
-    print(link)
-
-    context = {
-        'link': link,
-        'device': device_obj.device,
-        'link3': link3
-    }
-
-    return render(request, "custom/video/video-individual.html", context)
+        return JsonResponse({'codecard': id_unico})

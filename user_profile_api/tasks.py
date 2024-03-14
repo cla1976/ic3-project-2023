@@ -18,13 +18,13 @@ def sincronize_users():
         # Iterar sobre todos los dispositivos en tu base de datos
         for device in Device.objects.all():
             ip = device.ip
-            door_port = GATEWAY_PORT
-            #uuid = DEVICE_UUID
+            door_port = device.door_port
+            uuid = DEVICE_UUID
             username = device.user
             password = device.get_password()
             device_id = device.id
 
-            url = f"http://{ip}:{door_port}{URL_SEARCH_USER}?format=json"
+            url = f"http://{ip}:{door_port}{URL_SEARCH_USER}?format=json&devIndex={uuid}"
             headers = {'Content-Type': 'application/json'}
             data = {
                 "UserInfoSearchCond": {
@@ -75,7 +75,7 @@ def sincronize_users():
                         else:
                             is_staff = False
 
-                        url = f"http://{ip}:{door_port}{URL_RECORD_USER}?format=json"
+                        url = f"http://{ip}:{door_port}{URL_RECORD_USER}?format=json&devIndex={uuid}"
                         headers = {'Content-Type': 'application/json'}
 
                         if begin_time == None and end_time == None:

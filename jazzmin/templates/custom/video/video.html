@@ -1,6 +1,4 @@
-{% extends 'admin/base_site.html' %}
-{% load static %}
-{% block content %}
+{% extends 'admin/base_site.html' %} {% load static %} {% block content %}
 <script src="{% static 'custom/jquery-3.6.4.min.js' %}"></script>
 
 <script>
@@ -46,7 +44,7 @@
 
 <html>
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Transmisión de video</title>
     <style>
       body {
@@ -57,7 +55,7 @@
       #video-container {
         width: 100vh;
         height: 600px;
-        box-sizing: border-box;   
+        box-sizing: border-box;
       }
       #container {
         display: flex;
@@ -83,7 +81,7 @@
       }
       #my-form button {
         padding: 10px 20px;
-        background-color: #28B62C;
+        background-color: #28b62c;
         color: #white;
         border: none;
         border-radius: 5px;
@@ -92,7 +90,7 @@
         margin-left: 20px;
         font-weight: bold;
         font-size: small;
-        border-bottom: 5px solid #23A127;
+        border-bottom: 5px solid #23a127;
       }
       #my-form button:hover {
         background-color: #333333;
@@ -151,13 +149,11 @@
         </div>
             <div id="form-container">
               <form id="my-form">
-                {% csrf_token %}
                 <button id="openAllButton" type="button">Apertura masiva puertas</button>
               </form>
             </div>
     </div>
   </body>
 </html>
-
 
 {% endblock %}

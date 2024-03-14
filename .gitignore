@@ -4,9 +4,13 @@
 /secrets.json
 /API Access Control Gateway.postman_collection.json
 /workspace.postman_globals.json
-/go2rtc_linux_amd64
+/go2rtc.exe
 /go2rtc.yaml
-/users_profile_api/migrations/*
+/go2rtc_linux_amd64
+/user_profile_api/migrations/
+/celerybeat-schedule.bak
+/celerybeat-schedule.dat
+/celerybeat-schedule.dir
 
 ### VisualStudioCode ###
 .vscode/*
