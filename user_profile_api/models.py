@@ -66,6 +66,7 @@ class Device(models.Model):
     date_purchased = models.DateField(editable=True)
     is_active = models.BooleanField(default=False)
     is_synchronized = models.BooleanField(default=True)
+    massive_opening = models.BooleanField(default=True)
 
 
     def __str__(self):
@@ -199,11 +200,28 @@ class Room(models.Model):
         verbose_name_plural = "Salas"
 
 
+#Tabla para guardar los numeros y descripciones de eventos minor
+class EventsDescription(models.Model):
+    EVENT_CHOICES = [
+        ('0', 'All Events'),
+        ('1', 'Event Alarm'),
+        ('2', 'Device Exception'),
+        ('3', 'Device Operation'),
+        ('5', 'Device Event'),
+    ]
+    
+    number = models.CharField(max_length=4, blank=True, verbose_name="event_number")
+    major = models.CharField(max_length=1, choices=EVENT_CHOICES, blank=True, verbose_name="major_number")
+    description = models.CharField(max_length=100, null=True, verbose_name="event_description")
+    
+    class Meta:
+        verbose_name = "Descripcion de Evento"
+        verbose_name_plural = "Descripcion de Eventos"
 
-
-
-
-
-
-
-
+    @staticmethod
+    def get_minor_description(major, minor):
+        try:
+            event_description = EventsDescription.objects.get(major=major, number=minor)
+            return event_description.description
+        except EventsDescription.DoesNotExist:
+            return "No description available"

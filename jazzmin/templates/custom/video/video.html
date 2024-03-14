@@ -14,24 +14,20 @@
   
       $(".dropdown-menu li a").click(function() {
           var device = $(this).text();
-          var url = '{{ link2 }}' + device + '&media=video+audio+microphone';
+          var url = 'individual/' + device + '/';
           window.location.href = url;
       });
   
-      $('#my-form button').click(function(event) {
-          event.preventDefault();
-          
-          var device = $(this).attr('data-value');
-          var url = '/video/open_door/' + device;
-  
-          $.ajax({
-              url: url,
-              type: 'POST',
-              data: $('#my-form').serialize(),
-              success: function(data) {
-                  console.log(data);
-              }
-          });
+      $("#openAllButton").click(function (event) {
+        event.preventDefault();
+        let url = "/video/massive_door_opening/";
+        $.ajax({
+          url: url,
+          type: "GET",
+          success: function (data) {
+            console.log(data);
+          },
+        });
       });
   
       $('.dropdown-btn').click(function() {
@@ -46,7 +42,6 @@
   });
   </script>
   
-
 
 
 <html>
@@ -102,23 +97,6 @@
       #my-form button:hover {
         background-color: #333333;
       }
-      #my-form2 button {
-        padding: 10px 20px;
-        background-color: #3c45ca;
-        color: #white;
-        border: none;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
-        margin-left: 20px;
-        font-weight: bold;
-        font-size: small;
-        border-bottom: 5px solid #090f5f;
-      }
-      #my-form2 button:hover {
-        background-color: #333333;
-      }
-
       .dropdown-btn {
           padding: 10px 20px;
           background-color: #337ab7;
@@ -173,16 +151,8 @@
         </div>
             <div id="form-container">
               <form id="my-form">
-                {% for device in devices %}
-                  {% csrf_token %}
-                  <button type="submit" data-value="{{ device }}">Abrir puerta {{ device }}</button>
-                {% endfor %}
-              </form>
-              <form id="my-form2">
-                {% for device in devices %}
-                  <a href="{{ link3 }}{{ device }}" target="_blank">
-                  <button type="button" data-value="{{ device }}">Sacar foto {{ device }}</button>
-                {% endfor %}
+                {% csrf_token %}
+                <button id="openAllButton" type="button">Apertura masiva puertas</button>
               </form>
             </div>
     </div>

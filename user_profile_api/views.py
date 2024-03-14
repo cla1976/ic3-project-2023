@@ -29,7 +29,7 @@ import datetime
 import json, base64
 from django.http import JsonResponse
 import hashlib
-from .models import SubjectSchedule, Device
+from .models import SubjectSchedule, Device, EventsDescription
 from django.db.models import F
 import itertools
 import subprocess
@@ -37,6 +37,8 @@ from django.contrib import messages
 import random 
 import string 
 from user_profile_api.notifications import send_email, send_telegram
+from django.utils import timezone
+from datetime import timedelta
 
 def check_admin(user):
    return user.is_superuser
@@ -286,39 +288,80 @@ class GetEventsView(TemplateView):
         desde = request.POST.get('desde', "")
         hasta = request.POST.get('hasta', "")
 
-        if grupoevento != "":
-            grupoevento = int(grupoevento)
+        usuario = request.POST.get('usuarios', "")  # Inicializar usuario como una cadena vacía
+        username = ""
+        employee_no = "" 
+
+        if usuario:
+            # Utilizamos directamente el valor del usuario como el nombre de usuario
+            username = usuario
+
+            # Ahora puedes usar 'username' en tu vista según sea necesario
+            print("Nombre de usuario:", username)
+
+            # No necesitas convertir 'usuario' en un entero, ya que estamos tratando con el nombre de usuario
+        else:
+            # Si no se selecciona ningún usuario, dejar 'username' vacío
+            print("No se seleccionó ningún usuario")
+            username = ""
+            # Puedes dejar 'username' como una cadena vacía si no se selecciona ningún usuario
+
+            # No necesitas extraer el número de empleado ya que no se está utilizando
+
+
+        grupoevento = request.POST.get('grupoevento', "")
+        tipoevento = request.POST.get('tipoevento', "")
+        desde = request.POST.get('desde', "")
+        hasta = request.POST.get('hasta', "")
+
         if tipoevento != "":
             tipoevento = int(tipoevento)
+        
+        if grupoevento != "":
+            grupoevento = int(grupoevento)
 
-        print("Datos: ")
-        print(usuario)
-        print(grupoevento)
-        payload = {
-            "AcsEventCond": {
-                "searchID": "1",
-                "searchResultPosition": 0,
-                "maxResults": 500,
-                "major": grupoevento,
-                "minor": tipoevento,
-                "startTime": desde,
-                "endTime": hasta
+        headers = {'Content-Type': 'application/json'}
+
+        # Realizar tres solicitudes con diferentes posiciones de resultado
+        events = []
+        for position in range(10):
+            payload = {
+                "AcsEventCond": {
+                    "searchID": "1",
+                    "searchResultPosition": position,
+                    "maxResults": 500,
+                    "major": grupoevento,
+                    #"minor": tipoevento,
+                    "minor": 0,
+                    "startTime": desde,
+                    "endTime": hasta,
+                    "timeReverseOrder": True 
+                }
             }
-        }
+            
+            
+            # Verificar si 'username' está vacío
+            if username:
+                # Si 'username' no está vacío, incluirlo en el payload
+                payload['AcsEventCond']['name'] = username
 
-        headers = {
-        'Content-Type': 'application/json'
-        }
+            payload_json = json.dumps(payload)
+            print(payload_json)
+            response = requests.post(full_url, headers=headers, data=payload_json, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+            response_data = response.json()
+            events.extend(response_data.get('AcsEvent', {}).get('InfoList', []))
 
-        payload_json = json.dumps(payload)
-        print(payload_json)
-        response = requests.post(full_url, headers=headers, data=payload_json, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
-        events = response.json()
-        print(response.text)
-        if events['AcsEvent']['responseStatusStrg'] == 'NO MATCH':
+        if not events:
             return JsonResponse({})
-        else:
-            return JsonResponse({'events': events['AcsEvent']['InfoList']})
+
+        # Agregar la descripción del minor a cada evento
+        for event in events:
+            major = event.get('major')
+            minor = event.get('minor')
+            event['minor_description'] = EventsDescription.get_minor_description(major, minor)
+            
+        # Devolver los eventos actualizados como una respuesta JSON
+        return JsonResponse({'events': events, 'username': username})
 
 
 @user_passes_test(check_admin)
@@ -390,8 +433,58 @@ def show_events_devices(request):
 @user_passes_test(check_admin)
 def show_events(request, device):
     print(device)
-    lista_device = {'device': device}
-    return render(request, "custom/show_events/show_events.html", lista_device)
+
+    # Obtén todos los usuarios de UserProfile
+    #users = UserProfile.objects.all()
+    # Llama a la vista get_users para obtener la respuesta de los usuarios
+    users_response = get_users(request, device)
+    
+    # Obtén el contenido de la respuesta en bytes
+    response_content = users_response.content
+    
+    # Convierte el contenido en un diccionario JSON
+    try:
+        response_data = json.loads(response_content)
+        # Obtén los datos de los usuarios del diccionario JSON
+        users_data = response_data.get('users', [])
+    except (json.JSONDecodeError, AttributeError) as e:
+        # Maneja los errores de decodificación JSON o atributo inválido
+        print(f"Error al decodificar JSON: {e}")
+        users_data = []
+
+    # Obtén todas las descripciones de eventos
+    #event_descriptions = EventsDescription.objects.all()
+    event_descriptions = EventsDescription.objects.all().order_by('number')
+    # Define EVENT_CHOICES aquí o importa desde donde sea necesario
+    EVENT_CHOICES = [
+        ('0', 'All Groups Events'),
+        ('1', 'Event Alarm'),
+        ('2', 'Device Exception'),
+        ('3', 'Device Operation'),
+        ('5', 'Device Event'),
+        ]
+
+
+    # Obtén la fecha actual
+    current_date = timezone.now()
+    three_months_ago = current_date - timedelta(days=3*30)  # Asumiendo un promedio de 30 días por mes
+
+    three_months_ago_formatted = three_months_ago.strftime('%Y-%m-%dT%H:%M')
+    # Dentro de tu vista
+    current_date2 = timezone.now().strftime('%Y-%m-%dT%H:%M')
+    #current_date1 = timezone.now().replace(hour=0, minute=0).strftime('%Y-%m-%dT%H:%M')
+    current_date1 = three_months_ago.strftime('%Y-%m-%dT%H:%M')
+    print ("usuarios", users_data)
+    context = {
+        'device': device,
+        'users': users_data,
+        'event_descriptions': event_descriptions,
+        'EVENT_CHOICES': EVENT_CHOICES,  # Agrega EVENT_CHOICES al contexto
+        'current_date1' : current_date1,
+        'current_date2' : current_date2,
+    }
+    # Renderiza la plantilla con el nuevo contexto
+    return render(request, "custom/show_events/show_events.html", context)
 
 #BOT TELEGRAM
 bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
@@ -477,3 +570,50 @@ def eventlistener(request):
     else:
         return HttpResponse(status=405)
 
+@user_passes_test(check_admin)
+def massive_door_opening(request):
+    devices = Device.objects.all()  # Obtén todos los dispositivos
+
+    for device in devices:
+        ip = device.ip
+        door_port = GATEWAY_PORT
+        #GATEWAY_USER = device.user
+        #GATEWAY_PASSWORD = device.password
+        massive_opening = device.massive_opening
+
+        base_url = f"http://{ip}:{door_port}"
+        door_url = f"{URL_OPEN_DOOR_1}?format=xml"
+        url = f"{base_url}{door_url}"
+        payload = "<RemoteControlDoor xmlns=\"http://www.isapi.org/ver20/XMLSchema\" version=\"2.0\"><cmd>open</cmd></RemoteControlDoor>"
+        headers = {
+            'Content-Type': 'application/xml'
+        }
+        
+
+        if massive_opening == True:
+            response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            # Puedes agregar lógica adicional para manejar la respuesta de cada dispositivo si es necesario
+
+    return HttpResponse('Todas las puertas han sido abiertas')
+
+@user_passes_test(check_admin)
+def video_individual(request, device):
+    try:
+        device_obj = Device.objects.get(device=device)
+    except Device.DoesNotExist:
+        return HttpResponseNotFound("Dispositivo no encontrado")
+
+    link = GATEWAY_ONE_CAMERA
+    link += f'{device_obj.device}&mode=webrtc'
+    link3 = GATEWAY_CAMERA_SCREENSHOT
+
+    print(link)
+
+    context = {
+        'link': link,
+        'device': device_obj.device,
+        'link3': link3
+    }
+
+    return render(request, "custom/video/video-individual.html", context)

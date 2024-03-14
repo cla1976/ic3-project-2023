@@ -32,6 +32,8 @@ from user_profile_api.views import (
     show_users_devices,
     video,
     video_open_door,
+    massive_door_opening,
+    video_individual,
     enviar_telegram, 
     enviar_telegram_usuarios, 
     eventlistener,
@@ -39,6 +41,7 @@ from user_profile_api.views import (
 
 urlpatterns = [
     path('video/open_door/<str:device>/', video_open_door, name='video_open_door'),
+    path('video/massive_door_opening/', massive_door_opening, name='massive_door_opening'),
     path('show_users/<str:device>/get_users/', get_users, name='get_users'),
     path('show_events/<str:device>/get_events/', GetEventsView.as_view(), name='get_events'),
     path('show_doors/<str:device>/show_doors/', GetDoorsView.as_view(), name='get_doors'),
@@ -52,6 +55,7 @@ urlpatterns = [
     path('horario/<str:career>/', schedule_career_home_year, name='schedule_career_home_year'),
     path('horario/', schedule_career_home, name='schedule_career_home'),
     path('video/', video, name='video'),
+    path('video/individual/<str:device>/', video_individual, name='video_individual'),
     path('show_users/<str:device>/', show_users, name='show_users'),
     path('show_users/', show_users_devices, name='show_users_devices'),
     path('show_events/<str:device>/', show_events, name='show_events'),
