@@ -104,11 +104,14 @@
         </svg>
       </label>
       <span id="selected-file" style="margin-left: 10px;">Nombre del archivo seleccionado</span>
-      <button type="submit" class="btn btn-primary" style="background-color: #1da1f2; border-color: #1da1f2; color: black;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16" style="color: black;">
-          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.168.486-4.666 2.01-.567.225-.595.442c-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294q.39.01.868-.32 3.269-2.206 3.374-2.23c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8 8 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629q.14.092.27.187c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.4 1.4 0 0 0-.013-.315.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09"/>
-        </svg>
-      </button>
+      <button id="submit-button" type="submit" class="btn btn-primary" style="background-color: #1da1f2; border-color: #1da1f2; color: black;">
+        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+        <span class="button-text">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16" style="color: black;">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.168.486-4.666 2.01-.567.225-.595.442c-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294q.39.01.868-.32 3.269-2.206 3.374-2.23c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8 8 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629q.14.092.27.187c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.4 1.4 0 0 0-.013-.315.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09"/>
+            </svg>
+        </span>
+    </button>
     </form>
     <!-- Espacio en blanco -->
     <div style="width: 220px;"></div>
@@ -168,8 +171,8 @@
           data: tableData,
           layout: "fitColumns",
           pagination: "local",
-          paginationSize: 50,
-          paginationSizeSelector: [50, 100, 150],
+          paginationSize: 30,
+          paginationSizeSelector: [10, 20, 30],
           columns: [
             {title: "Usuario num.", field: "employeeNo", headerFilter: true},
             {title: "Nombre", field: "name", headerFilter: true},
@@ -204,6 +207,28 @@
           table.print(false, true);
         });
       });
+      function obtenerNombreDispositivo() {
+          // Obtener la URL actual
+          var url = window.location.href;
+          
+          // Buscar el patrón en la URL que contiene el nombre del dispositivo
+          var dispositivoPattern = /\/show_users\/([^/]+)/;
+          var match = url.match(dispositivoPattern);
+
+          // Si se encontró el patrón y hay una coincidencia
+          if (match && match[1]) {
+              // El nombre del dispositivo es el primer grupo de captura (match[1])
+              return match[1];
+          } else {
+              // Si no se encuentra el patrón, devuelve un valor predeterminado o maneja el caso según sea necesario
+              return "NombreDispositivoPredeterminado";
+          }
+      }
+
+  // Llamada a la función para obtener el nombre del dispositivo
+  var deviceName = obtenerNombreDispositivo();
+  console.log(deviceName); // Aquí tienes el nombre del dispositivo que puedes utilizar
+
 
       function generarPDF(table) {
         var tableData = table.getData();
@@ -245,8 +270,15 @@
             6: {cellWidth: 'auto'}, // Tipo de usuario
           },
         });
+        // Obteniendo la fecha actual
+        var currentDate = new Date();
+        var formattedDate = currentDate.toLocaleDateString().replace(/\//g, "-"); // Formato: DD-MM-YYYY
 
-        doc.save('tabla.pdf');
+        // Nombrando el archivo con la fecha actual
+        var fileName = 'Historial_usuarios_' + deviceName + '_' + formattedDate + '.pdf';
+
+        // Guardando el archivo PDF
+        doc.save(fileName);
       }
 
       function descargarExcel(table) {
@@ -288,12 +320,26 @@
           }
           worksheet['!cols'][C] = { wch: width };
         }
+        // Obteniendo la fecha actual
+        var currentDate = new Date();
+        var formattedDate = currentDate.toLocaleDateString().replace(/\//g, "-"); // Formato: DD-MM-YYYY
 
-        XLSX.writeFile(workbook, 'tabla.xlsx');
+        // Nombrando el archivo con la fecha actual
+        var fileName = 'Historial_eventos_' + deviceName + '_' + formattedDate + '.xlsx';
+
+        // Guardando el archivo Excel
+        XLSX.writeFile(workbook, fileName)        
+
       }
 
       $('#enviarTelegramForm').submit(function (event) {
         event.preventDefault();
+        
+        // Muestra el indicador de carga
+        $('#submit-button .spinner-border').removeClass('d-none');
+        // Oculta el texto del botón
+        $('#submit-button .button-text').addClass('d-none');
+
         var formData = new FormData(this);
         $.ajax({
             url: $(this).attr('action'),
@@ -313,6 +359,12 @@
                     title: 'Error',
                     text: 'Hubo un problema al enviar el mensaje.',
                 });
+            },
+            complete: function () {
+                // Oculta el indicador de carga
+                $('#submit-button .spinner-border').addClass('d-none');
+                // Muestra el texto del botón
+                $('#submit-button .button-text').removeClass('d-none');
             }
         });
     });

@@ -40,8 +40,14 @@
       font-size: 16px;
       border-radius: 5px;
       border: 1px solid #ccc;
-    }
+    }  
+      /* Añade este estilo para que la tabla se ajuste al ancho de su contenedor */
+    #my-table {
+      width: 100%;
+    }  
 
+
+    
   </style>
     <style>
       /* Añade estos estilos para alinear los botones según tus preferencias */
@@ -84,7 +90,7 @@
     
       /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
       .btn-primary {
-        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+        width: 100px; /* Puedes ajustar el ancho según tus preferencias */
       }
     </style>
     
@@ -100,7 +106,7 @@
     
       /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
       .btn-primary {
-        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+        width: 100px; /* Puedes ajustar el ancho según tus preferencias */
       }
     </style>
 
@@ -118,11 +124,11 @@
       {% csrf_token %}
       <div class="form-row">
         <div class="form-group col-md-2">
-          <label for="select-usuario">Usuario num.</label>
-          <select name="select-usuario" id="select-usuario" class="form-control form-control-sm">
-            <option value="">Selecciona un usuario</option>
+          <label for="select-usuario">Usuario</label>
+          <select name="usuarios" id="select-usuario" class="form-control form-control-sm">
+            <option value="">Todos los usuarios</option>
             {% for user in users %}
-              <option value="{{ user.employeeNoString }}">{{ user.name }} {{ user.employeeNoString }}</option>
+              <option value="{{ user.name }}">{{ user.name }} - {{ user.employeeNo }}</option>
             {% endfor %}
           </select>
         </div>
@@ -138,7 +144,7 @@
           <label for="tipoevento">Tipo de evento</label>
           <select name="tipoevento" id="tipoevento" class="form-control form-control-sm">
             {% for event_description in event_descriptions %}
-              <option value="{{ event_description.number }}">{{ event_description.major }} - {{ event_description.number }} - {{ event_description.description }}</option>
+              <option value="{{ event_description.number }}" data-grupo="{{ event_description.major }}">{{ event_description.major }} - {{ event_description.number }} - {{ event_description.description }}</option>
             {% endfor %}
           </select>
         </div>
@@ -150,10 +156,12 @@
           <label for="hasta">Hasta</label>
           <input type="datetime-local" class="form-control form-control-sm" name="hasta" id="hasta" value="{{ current_date2 }}" data-enable-time="true">
         </div>
-        <div class="form-group col-md-2">
-          <label for="button">Filtrar</label>
-          <button id="my-button" type="submit" class="btn btn-primary btn-sm mr-2">Enviar</button>
-          <button id="open-new-tab" class="btn btn-secondary btn-sm">Picture</button>
+        <div class="form-group col-md-2 d-flex align-items-end">
+          <button id="my-button" type="submit" class="btn btn-primary custom-btn mr-2">
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            <span class="button-text">Filtrar</span>
+          </button>
+          <button id="open-new-tab" class="btn btn-secondary custom-btn">Picture</button>
         </div>
       </div>
     </form>
@@ -180,11 +188,14 @@
         </svg>
       </label>
       <span id="selected-file" style="margin-left: 10px;">Nombre del archivo seleccionado</span>
-      <button type="submit" class="btn btn-primary" style="background-color: #1da1f2; border-color: #1da1f2; color: black;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16" style="color: black;">
-          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.168.486-4.666 2.01-.567.225-.595.442c-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294q.39.01.868-.32 3.269-2.206 3.374-2.23c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8 8 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629q.14.092.27.187c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.4 1.4 0 0 0-.013-.315.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09"/>
-        </svg>
-      </button>
+      <button id="submit-button" type="submit" class="btn btn-primary" style="background-color: #1da1f2; border-color: #1da1f2; color: black;">
+        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+        <span class="button-text">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16" style="color: black;">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.168.486-4.666 2.01-.567.225-.595.442c-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294q.39.01.868-.32 3.269-2.206 3.374-2.23c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8 8 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629q.14.092.27.187c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.4 1.4 0 0 0-.013-.315.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09"/>
+            </svg>
+        </span>
+    </button>
     </form>
   </div>    
 
@@ -214,9 +225,10 @@
             if (!imageURL) {
                 return "";
             }
+            var authURL = imageURL.replace("http://", "http://admin:unraf1234@");
             var img = document.createElement("img");
-            img.width = 25;
-            img.height = 25;
+            img.width = 150;
+            img.height = 84;
             img.src = imageURL;
             img.addEventListener("click", function() {
                 window.open(imageURL, '_blank');
@@ -226,17 +238,17 @@
         }
 
       var table = new Tabulator("#my-table", {
-        layout: "fitColumns",
+        layout: "fitData",
         pagination: "local",
-        paginationSize: 50,
-        paginationSizeSelector: [50, 100, 150],
+        paginationSize: 30,
+        paginationSizeSelector: [10, 30, 75, 150, 300],
         // Otras configuraciones...
         scrollHorizontal: true,
         columns: [
-          { title: "Employee No.", field: "employeeNoString", headerFilter:true, width: 50},
-          { title: "Name", field: "name", headerFilter:true, width: 150},
-          { title: "Major", field: "major", headerFilter:true, width: 50},
-          { title: "Major", field: "major", headerFilter: false, width: 200, formatter: "lookup", formatterParams: { 
+          { title: "Employee No.", field: "employeeNoString",width: 40, headerFilter:true},
+          { title: "Name", field: "name", headerFilter:true},
+          { title: "Major", field: "major", width: 40, headerFilter:true},
+          { title: "Major", field: "major", headerFilter: false, formatter: "lookup", formatterParams: { 
             // Define el mapeo de valores
             '0': 'All Groups Events',
             '1': 'Event Alarm',
@@ -244,17 +256,15 @@
             '3': 'Device Operation',
             '5': 'Device Event'
           }},
-          { title: "Minor", field: "minor", headerFilter:true, width: 50},
+          { title: "Minor", field: "minor", width: 40, headerFilter:true},
           { title: "Minor", field: "minor_description", headerFilter:true},
           { title: "Time", field: "time", headerFilter:true},
-          { title: "Door No.", field: "doorNo", headerFilter:true, width: 50},
-          { title: "User Type", field: "userType", headerFilter:true, width: 50},
-          { title: "Current Verify Mode", field: "currentVerifyMode", headerFilter:true, width: 50},
-          { title: "Picture URL", field: "pictureURL", headerFilter:true},
-          { title: "Picture", field: "pictureURL", headerFilter:true, formatter: imageFormatter},
+          { title: "Door No.", field: "doorNo", width: 40, headerFilter:true},
+          { title: "User Type", field: "userType", headerFilter:true},
+          { title: "Current Verify Mode", field: "currentVerifyMode", width: 120, headerFilter:true},
+          { title: "Picture", field: "pictureURL", headerFilter:true,width: 160, formatter: imageFormatter},
         ],
       });
-
       $('#download-pdf').click(function () {
         generarPDF();
       });
@@ -271,7 +281,7 @@
                   "Door No.": row.doorNo,
                   "User Type": row.userType,
                   "Current Verify Mode": row.currentVerifyMode,
-                  "Picture URL": row.pictureURL
+                  "Picture": row.pictureURL
               };
           });
           var worksheet = XLSX.utils.json_to_sheet(orderedTableData);
@@ -297,7 +307,15 @@
               worksheet['!cols'][C] = {wch: width};
           }
 
-          XLSX.writeFile(workbook, 'tabla.xlsx');
+              // Obteniendo la fecha actual
+              var currentDate = new Date();
+              var formattedDate = currentDate.toLocaleDateString().replace(/\//g, "-"); // Formato: DD-MM-YYYY
+
+              // Nombrando el archivo con la fecha actual
+              var fileName = 'Historial_eventos_' + formattedDate + '.xlsx';
+
+              // Guardando el archivo Excel
+              XLSX.writeFile(workbook, fileName);
       });
 
       $('#print-table').click(function () {
@@ -310,24 +328,36 @@
           window.open(newTabUrl, '_blank');
       });
 
-      $('#my-button').click(function(event) {
-        event.preventDefault();
-        $.ajax({
-            url: '{% url 'get_events' device %}',
-            type: 'POST',
-            data: $('#my-form').serialize(),
-            success: function(data) {
-                console.log(data);
-                // Configurar los datos de la tabla
-                table.setData(data.events, true); // El segundo parámetro 'true' indica que se borrarán los datos existentes
-                // Llamar a la función redraw para que Tabulator vuelva a dibujar la tabla y aplique los cambios
-                table.redraw();
-            },
-            error: function(xhr, status, error) {
-                console.log('Error:', error);
-            }
-        });
+      $('#my-button').click(function (event) {
+      event.preventDefault();
+
+      // Muestra el indicador de carga
+      $('#my-button .spinner-border').removeClass('d-none');
+      // Oculta el texto del botón
+      $('#my-button .button-text').addClass('d-none');
+
+      $.ajax({
+        url: '{% url 'get_events' device %}',
+        type: 'POST',
+        data: $('#my-form').serialize(),
+        success: function (data) {
+          console.log(data);
+          // Configurar los datos de la tabla
+          table.setData(data.events, true); // El segundo parámetro 'true' indica que se borrarán los datos existentes
+          // Llamar a la función redraw para que Tabulator vuelva a dibujar la tabla y aplique los cambios
+          table.redraw();
+        },
+        error: function (xhr, status, error) {
+          console.log('Error:', error);
+        },
+        complete: function () {
+          // Oculta el indicador de carga
+          $('#my-button .spinner-border').addClass('d-none');
+          // Muestra el texto del botón
+          $('#my-button .button-text').removeClass('d-none');
+        }
       });
+    });
 
       function generarPDF() {
       var tableData = table.getData();
@@ -341,7 +371,7 @@
           "Door No.": row.doorNo,
           "User Type": row.userType,
           "Current Verify Mode": row.currentVerifyMode,
-          "Picture URL": row.pictureURL
+          "Picture": row.pictureURL,
         };
       });
 
@@ -370,52 +400,97 @@
           5: {cellWidth: 'auto'}, // Door No.
           6: {cellWidth: 'auto'}, // User Type
           7: {cellWidth: 'auto'}, // Current Verify Mode
-          8: {cellWidth: 'auto'}, // Picture URL
+          8: {cellWidth: 'auto'}, // Picture
         },
       });
 
-      doc.save('tabla.pdf');
+      // Obteniendo la fecha actual
+      var currentDate = new Date();
+      var formattedDate = currentDate.toLocaleDateString().replace(/\//g, "-"); // Formato: DD-MM-YYYY
+
+      // Nombrando el archivo con la fecha actual
+      var fileName = 'Historial_eventos_' + formattedDate + '.pdf';
+
+      // Guardando el archivo PDF
+      doc.save(fileName);
     }
 
     });
 
-    document.addEventListener('DOMContentLoaded', function () {
-            flatpickr('#desde', {
-                enableTime: true,
-                dateFormat: 'Y-m-dTH:i:S-03:00'
-            });
+document.addEventListener('DOMContentLoaded', function () {
+    flatpickr('#desde', {
+        enableTime: true,
+        dateFormat: 'Y-m-dTH:i:S-03:00'
+    });
 
-            flatpickr('#hasta', {
-                enableTime: true,
-                dateFormat: 'Y-m-dTH:i:S-03:00'
-            });
+    flatpickr('#hasta', {
+        enableTime: true,
+        dateFormat: 'Y-m-dTH:i:S-03:00'
+    });
 
-            $('#my-form2').submit(function (event) {
-                event.preventDefault();
-                var formData = new FormData(this);
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: $(this).attr('method'),
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function (response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Mensaje enviado correctamente.',
-                        });
-                    },
-                    error: function (xhr, status, error) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Hubo un problema al enviar el mensaje.',
-                        });
-                    }
+    $('#my-form2').submit(function (event) {
+        event.preventDefault();
+        
+        // Muestra el indicador de carga
+        $('#submit-button .spinner-border').removeClass('d-none');
+        // Oculta el texto del botón
+        $('#submit-button .button-text').addClass('d-none');
+
+        var formData = new FormData(this);
+        $.ajax({
+            url: $(this).attr('action'),
+            type: $(this).attr('method'),
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Mensaje enviado correctamente.',
                 });
-            });
+            },
+            error: function (xhr, status, error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Hubo un problema al enviar el mensaje.',
+                });
+            },
+            complete: function () {
+                // Oculta el indicador de carga
+                $('#submit-button .spinner-border').addClass('d-none');
+                // Muestra el texto del botón
+                $('#submit-button .button-text').removeClass('d-none');
+            }
         });
-    
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  var grupoeventoSelect = document.getElementById('grupoevento');
+  var tipoeventoSelect = document.getElementById('tipoevento').getElementsByTagName('option');
+
+  grupoeventoSelect.addEventListener('change', function() {
+    var selectedGrupo = this.value;
+    for (var i = 0; i < tipoeventoSelect.length; i++) {
+      var option = tipoeventoSelect[i];
+      if (selectedGrupo === '' || option.dataset.grupo === selectedGrupo || option.value === '0') {
+        option.style.display = '';
+      } else {
+        option.style.display = 'none';
+      }
+    }
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  var grupoeventoSelect = document.getElementById('grupoevento');
+  var tipoeventoSelect = document.getElementById('tipoevento');
+  
+  grupoeventoSelect.addEventListener('change', function() {
+    tipoeventoSelect.value = '0'; // Establece el valor del tipo de evento en 0
+  });
+});
 
 </script>
 
