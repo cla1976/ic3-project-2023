@@ -279,11 +279,11 @@ def get_users(request, device):
     base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_SEARCH_USER}?format=json"
     full_url = f"{base_url}{record_url}"
-    payload = json.dumps({
+    payload = json.dumps({  # Limitado a una sola solicitud de 30 posibles usuarios. Si se tieien mas deberia hacerse como en el getevents
         "UserInfoSearchCond": {
         "searchID": "0",
         "searchResultPosition": 0,
-        "maxResults": 1500
+        "maxResults": 500
         }
         })
     headers = {
@@ -294,21 +294,9 @@ def get_users(request, device):
     users = response.json()
     return JsonResponse({'users': users['UserInfoSearch']['UserInfo']})
 
-
 class GetEventsView(TemplateView):
     template_name = 'custom/show_events/show_events.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        device = self.kwargs.get('device')
-        context['device'] = device
-        context['users'] = UserProfile.objects.filter(device=device)
-
-        # Imprime el contenido de context['users'] en la terminal
-        print("Usuarios en contexto:", context['users'])
-
-        return context
-    
     def post(self, request, device, *args, **kwargs):
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
         door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
@@ -319,64 +307,82 @@ class GetEventsView(TemplateView):
         record_url = f"{URL_AcsEvent}?format=json"
         full_url = f"{base_url}{record_url}"
 
-        usuario = request.POST.get('usuario', "")
+        usuario = request.POST.get('usuarios', "")  # Inicializar usuario como una cadena vacía
+        username = ""
+        employee_no = "" 
+
+        if usuario:
+            # Utilizamos directamente el valor del usuario como el nombre de usuario
+            username = usuario
+
+            # Ahora puedes usar 'username' en tu vista según sea necesario
+            print("Nombre de usuario:", username)
+
+            # No necesitas convertir 'usuario' en un entero, ya que estamos tratando con el nombre de usuario
+        else:
+            # Si no se selecciona ningún usuario, dejar 'username' vacío
+            print("No se seleccionó ningún usuario")
+            username = ""
+            # Puedes dejar 'username' como una cadena vacía si no se selecciona ningún usuario
+
+            # No necesitas extraer el número de empleado ya que no se está utilizando
+
+
         grupoevento = request.POST.get('grupoevento', "")
         tipoevento = request.POST.get('tipoevento', "")
         desde = request.POST.get('desde', "")
         hasta = request.POST.get('hasta', "")
 
-        if grupoevento != "":
-            grupoevento = int(grupoevento)
-        
         if tipoevento != "":
             tipoevento = int(tipoevento)
         
-        print("Datos: ")
-        print(usuario)
-        print(grupoevento)
-        payload = {
-            "AcsEventCond": {
-                "searchID": "1",
-                "searchResultPosition": 0,
-                "maxResults": 1000,
-                "major": grupoevento,
-                "minor": tipoevento,
-                "startTime": desde,
-                "endTime": hasta
+        if grupoevento != "":
+            grupoevento = int(grupoevento)
+
+        headers = {'Content-Type': 'application/json'}
+
+        # Realizar tres solicitudes con diferentes posiciones de resultado
+        events = []
+        for position in range(10):
+            payload = {
+                "AcsEventCond": {
+                    "searchID": "1",
+                    "searchResultPosition": position,
+                    "maxResults": 500,
+                    "major": grupoevento,
+                    "minor": tipoevento,
+                    "startTime": desde,
+                    "endTime": hasta,
+                    "timeReverseOrder": True 
+                }
             }
-        }
+            
+            
+            # Verificar si 'username' está vacío
+            if username:
+                # Si 'username' no está vacío, incluirlo en el payload
+                payload['AcsEventCond']['name'] = username
 
-        headers = {
-        'Content-Type': 'application/json'
-        }
+            payload_json = json.dumps(payload)
 
-        payload_json = json.dumps(payload)
+            response = requests.post(full_url, headers=headers, data=payload_json, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+            response_data = response.json()
+            events.extend(response_data.get('AcsEvent', {}).get('InfoList', []))
 
-        print(payload_json)
-
-        response = requests.post(full_url, headers=headers, data=payload_json, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
-        events = response.json()
-        print(response.text)
- 
-        if events['AcsEvent']['responseStatusStrg'] == 'NO MATCH':
+        if not events:
             return JsonResponse({})
-        else:
-            # Obtener los eventos como un diccionario
-            events = events['AcsEvent']['InfoList']
 
-            # Agregar la descripción del minor a cada evento
-            for event in events:
-                major = event.get('major')
-                minor = event.get('minor')
-                event['minor_description'] = EventsDescription.get_minor_description(major, minor)
-                
-            # Devolver los eventos actualizados como una respuesta JSON
-            return JsonResponse({'events': events})
-        #if events['AcsEvent']['responseStatusStrg'] == 'NO MATCH':
-        #    return JsonResponse({})
-        #else:
-        #    return JsonResponse({'events': events['AcsEvent']['InfoList']})
-    
+        # Agregar la descripción del minor a cada evento
+        for event in events:
+            major = event.get('major')
+            minor = event.get('minor')
+            event['minor_description'] = EventsDescription.get_minor_description(major, minor)
+            
+        # Devolver los eventos actualizados como una respuesta JSON
+        return JsonResponse({'events': events, 'username': username})
+
+
+
 @user_passes_test(check_admin)
 def show_doors_devices(request):
     dispositivos = Device.objects.values_list('device', flat=True).distinct()
@@ -468,7 +474,6 @@ def show_events(request, device):
     # Obtén todas las descripciones de eventos
     #event_descriptions = EventsDescription.objects.all()
     event_descriptions = EventsDescription.objects.all().order_by('number')
-
     # Define EVENT_CHOICES aquí o importa desde donde sea necesario
     EVENT_CHOICES = [
         ('0', 'All Groups Events'),
@@ -488,7 +493,7 @@ def show_events(request, device):
     current_date2 = timezone.now().strftime('%Y-%m-%dT%H:%M')
     #current_date1 = timezone.now().replace(hour=0, minute=0).strftime('%Y-%m-%dT%H:%M')
     current_date1 = three_months_ago.strftime('%Y-%m-%dT%H:%M')
-
+    print ("usuarios", users_data)
     context = {
         'device': device,
         'users': users_data,
@@ -560,7 +565,7 @@ def enviar_telegram_usuarios(request):
             return HttpResponse("Mensaje y archivo enviados con éxito.")
         else:
             return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
-          
+        
 @csrf_exempt
 def eventlistener(request):
     if request.method == 'POST':
