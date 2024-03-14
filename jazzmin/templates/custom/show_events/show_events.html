@@ -40,8 +40,14 @@
       font-size: 16px;
       border-radius: 5px;
       border: 1px solid #ccc;
-    }
+    }  
+      /* Añade este estilo para que la tabla se ajuste al ancho de su contenedor */
+    #my-table {
+      width: 100%;
+    }  
 
+
+    
   </style>
     <style>
       /* Añade estos estilos para alinear los botones según tus preferencias */
@@ -84,7 +90,7 @@
     
       /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
       .btn-primary {
-        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+        width: 100px; /* Puedes ajustar el ancho según tus preferencias */
       }
     </style>
     
@@ -100,7 +106,7 @@
     
       /* Añade estos estilos para que todos los botones tengan el mismo tamaño */
       .btn-primary {
-        width: 150px; /* Puedes ajustar el ancho según tus preferencias */
+        width: 100px; /* Puedes ajustar el ancho según tus preferencias */
       }
     </style>
 
@@ -232,17 +238,17 @@
         }
 
       var table = new Tabulator("#my-table", {
-        layout: "fitColumns",
+        layout: "fitData",
         pagination: "local",
         paginationSize: 30,
         paginationSizeSelector: [10, 30, 75, 150, 300],
         // Otras configuraciones...
         scrollHorizontal: true,
         columns: [
-          { title: "Employee No.", field: "employeeNoString", headerFilter:true, width: 50},
-          { title: "Name", field: "name", headerFilter:true, width: 150},
-          { title: "Major", field: "major", headerFilter:true, width: 50},
-          { title: "Major", field: "major", headerFilter: false, width: 150, formatter: "lookup", formatterParams: { 
+          { title: "Employee No.", field: "employeeNoString",width: 40, headerFilter:true},
+          { title: "Name", field: "name", headerFilter:true},
+          { title: "Major", field: "major", width: 40, headerFilter:true},
+          { title: "Major", field: "major", headerFilter: false, formatter: "lookup", formatterParams: { 
             // Define el mapeo de valores
             '0': 'All Groups Events',
             '1': 'Event Alarm',
@@ -250,16 +256,15 @@
             '3': 'Device Operation',
             '5': 'Device Event'
           }},
-          { title: "Minor", field: "minor", headerFilter:true, width: 50},
-          { title: "Minor", field: "minor_description", headerFilter:true, width: 150},
-          { title: "Time", field: "time", headerFilter:true,width: 180},
-          { title: "Door No.", field: "doorNo", headerFilter:true, width: 50},
-          { title: "User Type", field: "userType", headerFilter:true, width: 70},
-          { title: "Current Verify Mode", field: "currentVerifyMode", headerFilter:true, width: 130},
+          { title: "Minor", field: "minor", width: 40, headerFilter:true},
+          { title: "Minor", field: "minor_description", headerFilter:true},
+          { title: "Time", field: "time", headerFilter:true},
+          { title: "Door No.", field: "doorNo", width: 40, headerFilter:true},
+          { title: "User Type", field: "userType", headerFilter:true},
+          { title: "Current Verify Mode", field: "currentVerifyMode", width: 120, headerFilter:true},
           { title: "Picture", field: "pictureURL", headerFilter:true,width: 160, formatter: imageFormatter},
         ],
       });
-
       $('#download-pdf').click(function () {
         generarPDF();
       });
