@@ -62,5 +62,8 @@ urlpatterns = [
     path('eventlistener/', eventlistener, name='eventlistener'),
     path('user_profile_api/userprofile/<str:id>/<str:action>/get_qrcode/', GetCardCode.as_view(), name='get_qrcode'),
     path('user_profile_api/userprofile/add/get_qrcode/', GetCardCode.as_view(), name='get_qrcode'),
+    path('user_profile_api/userprofile/<str:id>/<str:action>/get_fingerprint/', GetFingerprint.as_view(), name='get_fingerprint'),
+    path('user_profile_api/userprofile/add/get_fingerprint/', GetFingerprint.as_view(), name='get_fingerprint'),
+
     path('', admin.site.urls)
 ]

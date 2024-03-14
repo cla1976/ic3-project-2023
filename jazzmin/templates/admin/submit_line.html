@@ -38,17 +38,16 @@
         </button>
     <div class="form-group">
     {% endif %}
-    
+
     {% if show_copy_button %}
     <div class="form-group">
-        <label for="{{ adminform.form.user_device_id.id_for_label }}">Dispositivo a leer huella:</label>
+        <label for="{{ adminform.form.dni.id_for_label }}">Dispositivo a leer huella:</label>
         <select name="dispositivos-lectores" id="dispositivos-lectores">
-            {% for value, label in adminform.form.user_device_id.field.choices %}
+            {% for value, label in adminform.form.dni.field.choices %}
                 <option value="{{ value }}">{{ label }}</option>
             {% endfor %}
         </select>
     </div>
-
     {% endif %}
     
     {% if show_close %}

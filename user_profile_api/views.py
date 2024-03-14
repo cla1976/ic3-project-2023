@@ -15,7 +15,7 @@ from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
 from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS, GATEWAY_ONE_CAMERA
-from users_admin.settings import GATEWAY_IP2, GATEWAY_IP, GATEWAY_CAMERA_SCREENSHOT
+from users_admin.settings import GATEWAY_CAMERA_SCREENSHOT
 from user_profile_api.urls_services import (
     URL_STREAM_101,
     URL_OPEN_DOOR_1,
@@ -44,6 +44,7 @@ import random
 import string
 from django.contrib import messages
 from django.utils import timezone
+from users_admin.settings import GATEWAY_USER, GATEWAY_PASSWORD
 
 def check_admin(user):
    return user.is_superuser
@@ -65,9 +66,7 @@ def video(request):
     link += '&'.join(src_params)
     link += '&mode=webrtc'
     link2 = GATEWAY_ONE_CAMERA
-    link3 = GATEWAY_CAMERA_SCREENSHOT
 
-    print(link3)
 
     print(link)
 
@@ -76,7 +75,6 @@ def video(request):
     context = {
         'link': link,
         'link2': link2,
-        'link3': link3,
         'devices': devices
     }
 
@@ -93,11 +91,13 @@ def video_individual(request, device):
 
     link = GATEWAY_ONE_CAMERA
     link += f'{device_obj.device}&mode=webrtc'
+    link3 = GATEWAY_CAMERA_SCREENSHOT
 
     print(link)
 
     context = {
         'link': link,
+        'link3': link3,
         'device': device_obj.device
     }
 
@@ -309,13 +309,15 @@ class GetFingerprint(TemplateView):
 
     def post(self, request, *args, **kwargs):
         ip = request.POST.get('dispositivos-lectores')
-        base_url = "http://" + ip + ":85"
+        base_url = "http://" + '192.168.1.203' + ":85"
         record_url = f"{URL_FINGERPRINTING}?format=xml"
         full_url = f"{base_url}{record_url}"
         payload = "<CaptureFingerPrintCond><fingerNo>1</fingerNo></CaptureFingerPrintCond>"
         headers = {
             'Content-Type': 'application/xml'
         }
+
+        print("Se activó")
         
         print(full_url)
         response = requests.post(full_url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))

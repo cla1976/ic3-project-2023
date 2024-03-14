@@ -38,6 +38,7 @@ from django.db.models import F
 from unidecode import unidecode
 from requests.auth import HTTPDigestAuth
 import time
+from users_admin.settings import GATEWAY_USER, GATEWAY_PASSWORD
 
 # Archivo de señales. Se activan funcionalidades que están ligadas al panel de administración
 # que trae por defecto Django basandose en detección de cambios en los modelos 
@@ -201,10 +202,6 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                         }
                     }
                     
-                    print("Firmware viejo")
-
-                print(data)
-
                 response = requests.post(
                     full_url,
                     headers=headers,
@@ -382,7 +379,6 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 begin_time_str = instance.beginTime.strftime("%Y-%m-%dT%H:%M:%S")
                 end_time_str = instance.endTime.strftime("%Y-%m-%dT%H:%M:%S")
                 
-                if int(numero_encoder_released_date) <= 191119:
 
                 data = {
                     "UserInfo": 
@@ -958,13 +954,13 @@ def enviar_huella(sender, created, instance, **kwargs):
         return 
     
     if instance.fingerprint:
-        subject_schedules = instance.subject.all()
-        ips = []
-
-        for subject_schedule in subject_schedules:
-            device = subject_schedule.device
-            if device and device.is_active:  
-                ips.append(device.ip)
+        #subject_schedules = instance.subject.all()
+        ips = ['192.168.1.203']
+        GATEWAY_PORT = '85'
+       # for subject_schedule in subject_schedules:
+       #     device = subject_schedule.device
+       #     if device and device.is_active:  
+       #         ips.append(device.ip)
 
         for ip_address in ips:
             base_url = f'http://{ip_address}:{GATEWAY_PORT}'
@@ -987,7 +983,7 @@ def enviar_huella(sender, created, instance, **kwargs):
                     "FingerPrintDelete":{
                         "mode":"byEmployeeNo",
                         "EmployeeNoDetail":{
-                        "employeeNo": str(instance.user_device_id)
+                        "employeeNo": str(instance.dni)
                         }
                     }
                 }
@@ -1012,7 +1008,7 @@ def enviar_huella(sender, created, instance, **kwargs):
 
                     payload = {
                         "FingerPrintCfg": {
-                            "employeeNo": str(instance.user_device_id),
+                            "employeeNo": str(instance.dni),
                             "fingerPrintID": 1,
                             "enableCardReader": [1],
                             "fingerType": "normalFP",
