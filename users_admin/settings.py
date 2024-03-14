@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.conf import ENVIRONMENT_VARIABLE
 import utils
+from .celery import app as celery_app
 from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -28,7 +29,7 @@ SECRET_KEY = utils.get_secret('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -45,20 +46,17 @@ INSTALLED_APPS = [
     'multiselectfield',
     'user_profile_api',
     'celery',
+    'qrcode'
 ]
 
 CELERY_BEAT_SCHEDULE = {
-      'add-every-30-seconds': {
-        'task': 'user_profile_api.tasks.add',
-        'schedule': crontab(hour=20, minute=30, day_of_week=4),
-        'args': (2, 2),
-        'options': {
-            'expires': 15.0,
-        },
-    },
+       'sincronize-users': {
+           'task': 'user_profile_api.tasks.sincronize_users', 
+           'schedule': crontab(minute=0, hour='*/4'),
+      },   
 }
 
-CELERY_ALWAYS_EAGER = True
+CELERY_ALWAYS_EAGER = False
 # Celery Configuration Options
 CELERY_TIMEZONE = "America/Argentina/Buenos_Aires"
 CELERY_TASK_TRACK_STARTED = True
@@ -198,6 +196,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'jazzmin/static'),
+]
+
 STATIC_URL = 'static/'
 
 # Default primary key field type
@@ -215,18 +217,25 @@ print('Environment:', ENVIRONMENT)
 # Gateway & Device Settings
 #GATEWAY_IP = utils.get_secret('GATEWAY_IP')
 #GATEWAY_IP2 = utils.get_secret('GATEWAY_IP2')
+
 GATEWAY_PORT = '85'
-GATEWAY_RTSP = '554';
+GATEWAY_RTSP = '554'
 GATEWAY_USER = 'admin'
 GATEWAY_PASSWORD = utils.get_secret('GATEWAY_PASSWORD')
 DEVICE_UUID = 'D76C6D74-4B20-4BB1-8C4C-B51244DF3026'
 GATEWAY_CAMERAS = utils.get_secret('GATEWAY_CAMERAS')
+GATEWAY_ONE_CAMERA = utils.get_secret('GATEWAY_ONE_CAMERA')
 
 #BASE_URL = f'{GATEWAY_IP}:{GATEWAY_PORT}'
 
 #MEDIA_URL = '/media/'
 #MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-#BOT TELEGRAM
-bot_token = '6359475115:AAH8aeoS2XTPyS1xK7gP0mgxfhygH-F_UeA'
-chat_id = '1309708511'
+#Mail configuration
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ic3unraf@gmail.com'
+EMAIL_HOST_PASSWORD = 'rdmk btvy cwth yxfa'

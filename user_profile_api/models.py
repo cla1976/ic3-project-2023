@@ -1,6 +1,9 @@
 from django.db import models
 from django.utils import timezone
 from multiselectfield import MultiSelectField
+from django.db.models import Max
+from django_cryptography.fields import encrypt
+from django.core.exceptions import ValidationError
 
 DEVICES = (('1', 'Device 1'),
            ('2', 'Device 2'),
@@ -58,24 +61,33 @@ VERIFYMODE = (('cardOrFace', 'Tarjeta o cara'),
               ('face', 'Cara'))
 
 class Device(models.Model):
-    device = models.CharField(unique=True, max_length=50)
-    ip = models.CharField(unique=True, max_length=50)
-    date_purchased = models.DateField(editable=True)
-    is_active = models.BooleanField(default=False)
-    is_synchronized = models.BooleanField(default=True)
 
+    device = models.CharField(unique=True, max_length=50, null=False)
+    ip = models.CharField(unique=True, max_length=50, null=False)
+    door_port = models.IntegerField(null=False)
+    date_purchased = models.DateField(editable=True, null=True)
+    is_active = models.BooleanField(null=True)
+    is_synchronized = models.BooleanField(null=True)
+    user = models.CharField(max_length=50, null=False)
+    password = encrypt(models.CharField(max_length=128, null=False))
+    massive_opening = models.BooleanField(null=False)
+   
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    def get_password(self):
+        return self.password
 
     def __str__(self):
         text = "{0}"
         return text.format(self.device)
-
 
     class Meta:
         verbose_name = "Dispositivo"
         verbose_name_plural = "Dispositivos"
 
 class Career(models.Model):
-    name_career = models.CharField(unique=True, max_length=100)
+    name_career = models.CharField(unique=True, max_length=100, null=True)
 
     def __str__(self):
         return self.name_career
@@ -86,7 +98,7 @@ class Career(models.Model):
 
 
 class Subject(models.Model):
-    subject = models.CharField(unique=True, max_length=100)
+    subject = models.CharField(unique=True, max_length=100, null=True)
 
     def __str__(self):
         return self.subject
@@ -117,12 +129,10 @@ class SubjectSchedule(models.Model):
          ('Saturday', 'Sábado'),
          ('Sunday', 'Domingo'))
 
-
-
-    horario_id = models.IntegerField(blank=True, verbose_name="ID de horario")
-    begin_time = models.TimeField()
-    end_time = models.TimeField()
-    day = MultiSelectField(choices=WEEK, max_length=255)
+    horario_id = models.PositiveIntegerField(blank=True, verbose_name="ID de horario", null=True)
+    begin_time = models.TimeField(null=True)
+    end_time = models.TimeField(null=True)
+    day = MultiSelectField(choices=WEEK, max_length=255, null=True)
     device = models.ForeignKey(Device, null=True, on_delete=models.CASCADE, verbose_name="Dispositivos")
     career_subject_year = models.ForeignKey(CareerSubjectYear, on_delete=models.CASCADE)
 
@@ -134,35 +144,53 @@ class SubjectSchedule(models.Model):
         verbose_name_plural = "Horario de materias"
         unique_together = ('horario_id', 'device')
 
-class UserProfile(models.Model):
-    user_device_id = models.IntegerField(unique=True, blank=True, verbose_name="ID de usuario")
-    first_name = models.CharField(max_length=100, null=True, verbose_name="Nombre")
-    last_name = models.CharField(max_length=100, null=True, verbose_name="Apellido")
-    dni = models.CharField(max_length=100, unique=True, null=True, verbose_name="DNI")
-    email = models.EmailField(max_length=255, unique=True, verbose_name="Correo electrónico")
-    gender = models.CharField(max_length=10, choices=GENDER, verbose_name="Género")
-    subject = models.ManyToManyField(SubjectSchedule, verbose_name="Materias a asistir")
-    userVerifyMode = models.CharField(max_length=30, choices=VERIFYMODE, blank=True, verbose_name="Tipo de verificación")
-    doorRight = models.CharField(max_length=100, verbose_name="Puerta proxima")
-    doorNo = models.CharField(max_length=100, verbose_name="Número de puerta")
-    is_active = models.BooleanField(default=True, verbose_name="¿Usuario habilitado?")
-    is_staff = models.BooleanField(default=False, verbose_name="¿Usuario administrador?")
-    profile_type = models.CharField(max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario")
-    date_created = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha creación")
-    last_updated = models.DateTimeField(editable=False, default=timezone.now, verbose_name="Fecha actualización")
-    address = models.CharField(max_length=100, null=True, verbose_name="Dirección")
-    phone = models.CharField(max_length=100, null=True, blank=True, verbose_name="Teléfono")
-    beginTime = models.DateTimeField(editable=True, verbose_name="Fecha inicio de habilitación")
-    endTime = models.DateTimeField(editable=True, verbose_name="Fecha final de habilitación")
-    fileImage = models.FileField(upload_to='user_profile_api/images/', blank=True, verbose_name="Imagen")
-    card = models.CharField(max_length=20, blank=True, verbose_name="Tarjeta")
-    cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta")
-    timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora")
-    
+class UserTypes(models.Model):
+    user_type = models.CharField(verbose_name="Tipo de usuario", max_length=100, null=False)
 
     def __str__(self):
-        text = "{0} {1} ({2} {3})"
-        return text.format(self.first_name, self.last_name, self.dni, self.user_device_id)
+        text = "{1}"
+        return text.format(self.id, self.user_type)
+    
+    class Meta:
+        verbose_name = "Tipos de usuarios"
+        verbose_name_plural = "Tipos de usuarios"
+
+class UserProfile(models.Model):
+    choices = [(None, '-------'), ('Sí', 'Sí'), ('No', 'No')]
+
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Dispositivo")
+    first_name = models.CharField(max_length=100, verbose_name="Nombre")
+    last_name = models.CharField(max_length=100, null=True, blank=True, verbose_name="Apellido")
+    dni = models.CharField(max_length=100, unique=True, verbose_name="DNI")
+    email = models.EmailField(max_length=255, unique=True, null=True, blank=True, verbose_name="Correo electrónico")
+    gender = models.CharField(max_length=10, choices=GENDER, verbose_name="Género")
+    address = models.CharField(max_length=100, null=True, blank=True, verbose_name="Dirección")
+    phone = models.CharField(max_length=100, null=True, blank=True, verbose_name="Teléfono")
+    is_active = models.CharField(max_length=10, choices=choices, default=None, verbose_name="¿Fecha de habilitación?")
+    begin_time = models.DateTimeField(editable=True, null=True, blank=True, verbose_name="Fecha inicio de habilitación")
+    end_time = models.DateTimeField(editable=True, null=True, blank=True, verbose_name="Fecha final de habilitación")
+    is_staff = models.CharField(max_length=10, choices=choices, default=None, verbose_name="¿Usuario administrador?")
+    profile_type = models.CharField(default='normal', max_length=10, choices=PROFILETYPE, verbose_name="Tipo de usuario del dipositivo")
+    file_image = models.FileField(upload_to='user_profile_api/images/', null=True, blank=True, verbose_name="Imagen")
+    user_type = models.ForeignKey(UserTypes, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Tipo de usuario dentro de la institución")
+    card = models.CharField(unique=True, max_length=20, blank=True, null=True, verbose_name="Tarjeta")
+    cardType = models.CharField(max_length=20, blank=True, choices=CARDS, verbose_name="Tipo de tarjeta")
+    timeType = models.CharField(max_length=10, default='local', verbose_name="Modo de hora")
+
+    def clean(self): #Posibles errores relacionados a tarjeta 
+        super().clean()
+        if self.card and not self.cardType:
+            raise ValidationError({'cardType': 'Tipo de tarjeta es requerido si se agrega tarjeta.'})
+        elif self.cardType and not self.card:
+            raise ValidationError({'card': 'Tarjeta es requerido si tipo de tarjeta se completa.'})
+        elif self.card and not (17 <= len(self.card) <= 20):
+            raise ValidationError(
+                {'card': "El identificador de tarjeta debe tener entre 17 y 20 caracteres y solo puede contener letras o números."}
+            )
+
+    def __str__(self):
+        text = "{0} {1} {2}"
+        return text.format(self.first_name, self.last_name, self.dni)
 
     class Meta:
         verbose_name = "Usuario"
@@ -243,10 +271,9 @@ class UserProfileMaintenance(models.Model):
             self.id = next_id
         super().save(*args, **kwargs)
 
-
 class Room(models.Model):
-    room = models.CharField(max_length=100)
-    location = models.CharField(max_length=100)
+    room = models.CharField(max_length=100, null=True)
+    location = models.CharField(max_length=100, null=True)
     device = models.OneToOneField(Device, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -282,8 +309,3 @@ class EventsDescription(models.Model):
             return event_description.description
         except EventsDescription.DoesNotExist:
             return "No description available"
-
-
-
-
-

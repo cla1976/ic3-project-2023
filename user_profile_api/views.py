@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from django.views import View
 from django.http import StreamingHttpResponse
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotFound
 from django.views.decorators.http import condition
 import cv2
 import imutils
@@ -14,7 +14,7 @@ import requests
 from requests.auth import HTTPDigestAuth
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
-from users_admin.settings import DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_RTSP, GATEWAY_PORT, GATEWAY_CAMERAS
+from users_admin.settings import DEVICE_UUID, GATEWAY_RTSP, GATEWAY_CAMERAS, GATEWAY_ONE_CAMERA
 from user_profile_api.urls_services import (
     URL_STREAM_101,
     URL_OPEN_DOOR_1,
@@ -36,7 +36,10 @@ import subprocess
 from .models import UserProfile, EventsDescription
 from django.http import HttpResponseBadRequest
 from datetime import timedelta
-from django.conf import settings
+import logging
+from user_profile_api.notifications import send_email, send_telegram
+import random
+import string
 
 def check_admin(user):
    return user.is_superuser
@@ -58,12 +61,39 @@ def video(request):
     link += '&'.join(src_params)
     link += '&mode=webrtc'
 
+    print(link)
+
+    link2 = GATEWAY_ONE_CAMERA
+
     context = {
         'link': link,
+        'link2': link2,
         'devices': devices
     }
 
     return render(request, "custom/video/video.html", context)
+
+# Vista de los dispositivos individuales
+
+@user_passes_test(check_admin)
+def video_individual(request, device):
+    try:
+        device_obj = Device.objects.get(device=device)
+    except Device.DoesNotExist:
+        return HttpResponseNotFound("Dispositivo no encontrado")
+
+    link = GATEWAY_ONE_CAMERA
+    link += f'{device_obj.device}&mode=webrtc'
+
+    print(link)
+
+    context = {
+        'link': link,
+        'device': device_obj.device
+    }
+
+    return render(request, "custom/video/video-individual.html", context)
+
 
 # Vista de la funcionalidad para abrir la puerta asignada a un dispositivo. 
 # Se activa con el pulsado de botón en una vista con plantilla anterior y
@@ -73,8 +103,12 @@ def video(request):
 def video_open_door(request, device):
     print(device)
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":85"
+    base_url = f"http://{ip}:{door_port}"
     door_url = f"{URL_OPEN_DOOR_1}?format=xml"
     url = f"{base_url}{door_url}"
     print(url)
@@ -83,7 +117,36 @@ def video_open_door(request, device):
         'Content-Type': 'application/xml'
     }
     response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
-    return HttpResponse('')
+    return HttpResponse('La puerta ha sido abierta')
+
+# Vista de la funcionalidad para realizar la apertura masiva de las puertas habilitadas.
+
+@user_passes_test(check_admin)
+def massive_door_opening(request):
+    devices = Device.objects.all()  # Obtén todos los dispositivos
+
+    for device in devices:
+        ip = device.ip
+        door_port = device.door_port
+        GATEWAY_USER = device.user
+        GATEWAY_PASSWORD = device.password
+        massive_opening = device.massive_opening
+
+        base_url = f"http://{ip}:{door_port}"
+        door_url = f"{URL_OPEN_DOOR_1}?format=xml"
+        url = f"{base_url}{door_url}"
+        payload = "<RemoteControlDoor xmlns=\"http://www.isapi.org/ver20/XMLSchema\" version=\"2.0\"><cmd>open</cmd></RemoteControlDoor>"
+        headers = {
+            'Content-Type': 'application/xml'
+        }
+        
+
+        if massive_opening:
+            response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
+
+            # Puedes agregar lógica adicional para manejar la respuesta de cada dispositivo si es necesario
+
+    return HttpResponse('Todas las puertas han sido abiertas')
 
 
 # Vista de la funcionalidad para modificar los parámetros de una puerta asignada a un
@@ -105,8 +168,11 @@ class GetDoorsView(TemplateView):
         leaderCardOpenDuration = request.POST.get('leaderCardOpenDuration')
 
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
+        door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+        GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+        GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-        base_url = "http://" + ip + ":85"
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_1}?format=xml"
         url = f"{base_url}{door_url}"
         print(url)
@@ -118,7 +184,7 @@ class GetDoorsView(TemplateView):
         }
         response = requests.put(url, headers=headers, data=payload, auth=requests.auth.HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD))
         
-        base_url = "http://" + ip + ":85"
+        base_url = f"http://{ip}:{door_port}"
         door_url = f"{URL_DOOR_LOCKTYPE}?format=json"
         url = f"{base_url}{door_url}"
         print(url)
@@ -147,8 +213,11 @@ def show_doors(request, device):
     print(device)
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
     print(ip)
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
 
-    base_url = "http://" + ip + ":85"
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_DOOR_1}"
     full_url = f"{base_url}{record_url}"
 
@@ -168,7 +237,7 @@ def show_doors(request, device):
             enableLeaderCard = root.find('./{http://www.isapi.org/ver20/XMLSchema}enableLeaderCard').text
             leaderCardOpenDuration = root.find('./{http://www.isapi.org/ver20/XMLSchema}leaderCardOpenDuration').text
 
-            base_url = "http://" + ip + ":85"
+            base_url = f"http://{ip}:{door_port}"
             record_url = f"{URL_DOOR_LOCKTYPE}"
             full_url = f"{base_url}{record_url}"
 
@@ -200,9 +269,14 @@ def show_doors(request, device):
     except requests.exceptions.RequestException as e:
         print(f'Error de conexión: {e}')
 
+
 def get_users(request, device):
     ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
-    base_url = "http://" + ip + ":85"
+    door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+    GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+    GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
+
+    base_url = f"http://{ip}:{door_port}"
     record_url = f"{URL_SEARCH_USER}?format=json"
     full_url = f"{base_url}{record_url}"
     payload = json.dumps({  # Limitado a una sola solicitud de 30 posibles usuarios. Si se tieien mas deberia hacerse como en el getevents
@@ -225,7 +299,11 @@ class GetEventsView(TemplateView):
 
     def post(self, request, device, *args, **kwargs):
         ip = Device.objects.filter(device=device).values_list('ip', flat=True).first()
-        base_url = "http://" + ip + ":85"
+        door_port = Device.objects.filter(device=device).values_list('door_port', flat=True).first()
+        GATEWAY_USER = Device.objects.filter(device=device).values_list('user', flat=True).first()
+        GATEWAY_PASSWORD = Device.objects.filter(device=device).values_list('password', flat=True).first()
+
+        base_url = f"http://{ip}:{door_port}"
         record_url = f"{URL_AcsEvent}?format=json"
         full_url = f"{base_url}{record_url}"
 
@@ -487,3 +565,38 @@ def enviar_telegram_usuarios(request):
             return HttpResponse("Mensaje y archivo enviados con éxito.")
         else:
             return HttpResponse("Error al enviar el mensaje y el archivo a Telegram.")
+        
+@csrf_exempt
+def eventlistener(request):
+    if request.method == 'POST':
+        content_type = request.headers.get('Content-Type', '')
+        content_length = request.headers.get('Content-Length', 0)
+        post_data = request.body
+        
+        logging.info("POST request,\nPath: %s\nContent-Type: %s\nContent-Length: %s\n\nBody:\n%s\n", request.path, content_type, content_length, post_data)
+        
+        if b'"majorEventType":\t5' in post_data and b'"subEventType":\t6' in post_data:
+            print("Se encontraron ambas subcadenas:")
+            print(post_data.decode('utf-8'))
+            send_telegram()
+            send_email()
+        else:
+            print("No se encontraron ambas subcadenas en la solicitud.")
+
+        return HttpResponse("Solicitud POST recibida en /eventlistener/.", status=200)
+    else:
+        return HttpResponse(status=405)
+
+class GetCardCode(TemplateView):
+    template_name = 'admin/submit_line.html'
+
+    def post(self, request, *args, **kwargs):
+
+        def generar_id(longitud):
+            caracteres = string.ascii_letters + string.digits  
+            return ''.join(random.choice(caracteres) for _ in range(longitud))
+
+        longitud_id = random.randint(17, 20)
+        id_unico = generar_id(longitud_id)
+
+        return JsonResponse({'codecard': id_unico})
