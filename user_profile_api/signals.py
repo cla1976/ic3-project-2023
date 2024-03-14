@@ -1254,8 +1254,15 @@ def post_save_user_profile(sender, instance, created, **kwargs):
                         "enable": is_active,
                         "beginTime": begin_time_str, 
                         "endTime": end_time_str
-                    }, 
-                    "localUIRight": is_staff
+                    },
+                    "RightPlan": [
+                        {
+                            "doorNo": 1,
+                            "planTemplateNo": "1"
+                        }
+                    ],
+                    "localUIRight": is_staff,
+                    "userVerifyMode": instance.user_verify_mode
                 }
             }
             print(data)
@@ -1273,8 +1280,15 @@ def post_save_user_profile(sender, instance, created, **kwargs):
                         "enable": is_active, 
                         "beginTime": begin_time_str,
                         "endTime": end_time_str,
-                    }, 
-                    "localUIRight": is_staff
+                    },
+                    "RightPlan": [
+                        {
+                            "doorNo": 1,
+                            "planTemplateNo": "1"
+                        }
+                    ], 
+                    "localUIRight": is_staff,
+                    "userVerifyMode": instance.user_verify_mode
                 }
             }
             print(data)
@@ -1328,8 +1342,15 @@ def post_save_user_profile(sender, instance, created, **kwargs):
                             "enable": is_active, 
                             "beginTime": begin_time_str,
                             "endTime": end_time
-                        }, 
-                        "localUIRight": is_staff
+                        },
+                        "RightPlan": [
+                            {
+                                "doorNo": 1,
+                                "planTemplateNo": "1"
+                            }
+                        ], 
+                        "localUIRight": is_staff,
+                        "userVerifyMode": instance.user_verify_mode
                     }
                 }
                 print(data)
@@ -1347,8 +1368,15 @@ def post_save_user_profile(sender, instance, created, **kwargs):
                             "enable": is_active, 
                             "beginTime": begin_time_str,
                             "endTime": end_time_str,
-                        }, 
-                        "localUIRight": is_staff
+                        },
+                        "RightPlan": [
+                            {
+                                "doorNo": 1,
+                                "planTemplateNo": "1"
+                            }
+                        ], 
+                        "localUIRight": is_staff,
+                        "userVerifyMode": instance.user_verify_mode
                     }
                 }
                 print(data)
