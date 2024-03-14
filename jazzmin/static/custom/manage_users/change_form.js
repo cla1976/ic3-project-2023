@@ -20,23 +20,25 @@ $('#userprofile_form').on('submit', function(e) {
         let jueves = $('#id_userprofilemaintenance-0-thursday').val();
         let viernes = $('#id_userprofilemaintenance-0-friday').val();
         let sabado = $('#id_userprofilemaintenance-0-saturday').val();
-        const dias = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; 
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dias = [domingo, lunes, martes, miercoles, jueves, viernes, sabado]
 
         if (!domingo || !lunes || !martes || !miercoles || !jueves || !viernes || !sabado) {
             alert('Se deben completar los campos requeridos de la sección: Personal de mantenimiento');
             e.preventDefault();
         }
 
-        dias.forEach(function(dia) {
-            if (dia == 'Sí') {
-                let horaInicio = $(`id_userprofilemaintenance-0-${dias[dia]}_time_begin`);
-                let horaFin = $(`id_userprofilemaintenance-0-${dias[dia]}_time_end`);
+        days.forEach(function(day, index) {
+            const dia = dias[index];
+            if (dia === 'Sí') {
+                let horaInicio = $(`#id_userprofilemaintenance-0-${day}_time_begin`).val();
+                let horaFin = $(`#id_userprofilemaintenance-0-${day}_time_end`).val();
                 if (!horaInicio || !horaFin) {
-                    alert(`Se deben completar los campos de horario del día ${dias[dia]}`);
+                    alert(`Se deben completar los campos de horario del día ${day}`);
                     e.preventDefault(); 
                 }
             }
-        });
+        });        
     }
 });
 

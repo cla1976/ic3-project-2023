@@ -3,7 +3,7 @@ from django.dispatch import receiver
 import requests
 import yaml
 import json, base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from user_profile_api.middleware import specific_page_loaded
 from django.conf import settings
 from django.utils import timezone 
@@ -851,10 +851,10 @@ def enviar_horario(sender, instance, **kwargs):
     json_str = json.dumps(json_data, indent=4)
 
     print(json_str)
-    print(instance.horario_id)
+    print((instance.horario_id + 1))
 
     base_url = "http://{}:{}".format(ip, GATEWAY_PORT)
-    record_url = f"/ISAPI/AccessControl/UserRightWeekPlanCfg/{instance.horario_id}?format=json"
+    record_url = f"/ISAPI/AccessControl/UserRightWeekPlanCfg/{(instance.horario_id + 1)}?format=json"
     full_url = f"{base_url}{record_url}"
     headers = {"Content-type": "application/json"}
 
@@ -870,7 +870,7 @@ def enviar_horario(sender, instance, **kwargs):
         print("Se registró correctamente el horario!")
 
         base_url = "http://{}:{}".format(ip, GATEWAY_PORT)
-        record_url = f"/ISAPI/AccessControl/UserRightPlanTemplate/{instance.horario_id}?format=json"
+        record_url = f"/ISAPI/AccessControl/UserRightPlanTemplate/{(instance.horario_id + 1)}?format=json"
         full_url = f"{base_url}{record_url}"
         headers = {"Content-type": "application/json"}
 
@@ -883,7 +883,7 @@ def enviar_horario(sender, instance, **kwargs):
             "UserRightPlanTemplate":{
                 "enable": True,
                 "templateName": subject,
-                "weekPlanNo": instance.horario_id,
+                "weekPlanNo": (instance.horario_id + 1),
                 "holidayGroupNo": ""
             }
         }
@@ -985,6 +985,7 @@ def post_migrate_receiver(sender, **kwargs):
 modified = False
 
 # Array que tiene los días de la semana, se utilizan en distintas señales y funciones
+
 days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
 # Función encargada de enviar los datos de los usuarios creados o modificados al dispositivo remoto
@@ -1017,6 +1018,10 @@ def post_save_user_profile(sender, instance, created, **kwargs):
         #print(url)
 
         if instance.begin_time == None and instance.end_time == None:
+            today = datetime.now()
+            begin_time_str = today.strftime("%Y-%m-%dT%H:%M:%S")
+            end_time = today + timedelta(days=365 * 10)
+            end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%S")
             data = {
             "UserInfo":
                 {
@@ -1025,7 +1030,9 @@ def post_save_user_profile(sender, instance, created, **kwargs):
                     "userType": instance.profile_type,
                     "gender": instance.gender,
                     "Valid": {
-                        "enable": is_active
+                        "enable": is_active,
+                        "beginTime": begin_time_str, 
+                        "endTime": end_time_str
                     }, 
                     "localUIRight": is_staff
                 }
@@ -1063,8 +1070,11 @@ def post_save_user_profile(sender, instance, created, **kwargs):
         else: 
             url = f"http://{ip}:{door_port}{URL_MODIFY_USER}?format=json&devIndex={uuid}"
             #print(url)
-
             if instance.begin_time == None and instance.end_time == None:
+                today = datetime.now()
+                begin_time_str = today.strftime("%Y-%m-%dT%H:%M:%S")
+                end_time = today + timedelta(days=365 * 10)
+                end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%S")
                 data = {
                 "UserInfo":
                     {
@@ -1073,7 +1083,9 @@ def post_save_user_profile(sender, instance, created, **kwargs):
                         "userType": instance.profile_type,
                         "gender": instance.gender,
                         "Valid": {
-                            "enable": is_active
+                            "enable": is_active, 
+                            "beginTime": begin_time_str,
+                            "endTime": end_time
                         }, 
                         "localUIRight": is_staff
                     }
@@ -1184,7 +1196,7 @@ def post_save_user_profile_maintenance(sender, instance, created,**kwargs):
             
             data_1 = {
                 "UserRightWeekPlanCfg": {
-                    "planNo": "1",
+                    "planNo": str(id),
                     "enable": True,
                     "WeekPlanCfg": week_plan_cfg
                 }
@@ -1206,7 +1218,7 @@ def post_save_user_profile_maintenance(sender, instance, created,**kwargs):
                     "templateNo": str(id),
                     "enable": True,
                     "templateName": f"Usuario mantenimiento n° {id - 64}",
-                    "weekPlanNo": 1,
+                    "weekPlanNo": id,
                     "holidayGroupNo": ""
                 }
             }
@@ -1225,6 +1237,10 @@ def post_save_user_profile_maintenance(sender, instance, created,**kwargs):
             #print(url_3)
 
             if user_profile.begin_time == None and user_profile.end_time == None:
+                today = datetime.now()
+                begin_time_str = today.strftime("%Y-%m-%dT%H:%M:%S")
+                end_time = today + timedelta(days=365 * 10)
+                end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%S")
                 data_3 = {
                 "UserInfo":
                     {
@@ -1233,7 +1249,9 @@ def post_save_user_profile_maintenance(sender, instance, created,**kwargs):
                         "userType": user_profile.profile_type,
                         "gender": user_profile.gender,
                         "Valid": {
-                            "enable": is_active
+                            "enable": is_active,
+                            "beginTime": begin_time_str,
+                            "endTime": end_time_str
                         }, 
                         "doorRight": "1",
                         "RightPlan" : [{
@@ -1283,7 +1301,6 @@ def post_save_user_profile_maintenance(sender, instance, created,**kwargs):
 
 def modify_user_maintenence(instance, id):
     global days
-    #days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
     user_profile = instance.user_profile
     if user_profile.is_active == 'Sí':
@@ -1315,7 +1332,7 @@ def modify_user_maintenence(instance, id):
         
     data_1 = {
         "UserRightWeekPlanCfg": {
-            "planNo": "1",
+            "planNo": str(id),
             "enable": True,
             "WeekPlanCfg": week_plan_cfg
         }
@@ -1337,7 +1354,7 @@ def modify_user_maintenence(instance, id):
             "templateNo": str(id),
             "enable": True,
             "templateName": f"Usuario mantenimiento n° {id - 64}",
-            "weekPlanNo": 1,
+            "weekPlanNo": id,
             "holidayGroupNo": ""
         }
     }
@@ -1356,6 +1373,10 @@ def modify_user_maintenence(instance, id):
     url_3 = f"http://{ip}:{door_port}{URL_MODIFY_USER}?format=json&devIndex={uuid}"
     #print(url_3)
     if user_profile.begin_time == None and user_profile.end_time == None:
+        today = datetime.now()
+        begin_time_str = today.strftime("%Y-%m-%dT%H:%M:%S")
+        end_time = today + timedelta(days=365 * 10)
+        end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%S")
         data_3 = {
         "UserInfo":
             {
@@ -1364,7 +1385,9 @@ def modify_user_maintenence(instance, id):
                 "userType": user_profile.profile_type,
                 "gender": user_profile.gender,
                 "Valid": {
-                    "enable": is_active
+                    "enable": is_active, 
+                    "beginTime": begin_time_str,
+                    "endTime": end_time_str
                 }, 
                 "doorRight": "1",
                 "RightPlan" : [{
@@ -1434,7 +1457,7 @@ def pre_delete_user_profile_maintenance(sender, instance,**kwargs):
 
     data_1 = {
         "UserRightWeekPlanCfg": {
-            "planNo": "1",
+            "planNo": str(id),
             "enable": False,
             "WeekPlanCfg": week_plan_cfg
         }
@@ -1455,7 +1478,7 @@ def pre_delete_user_profile_maintenance(sender, instance,**kwargs):
                     "templateNo": str(id),
                     "enable": False,
                     "templateName": "",
-                    "weekPlanNo": 1,
+                    "weekPlanNo": id,
                     "holidayGroupNo": ""
                 }
             }
