@@ -432,7 +432,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                 }
                             }
                     
-                    print('Firmware viejo')
+                    print('Firmware nuevo')
                     
                 response = requests.put(
                     full_url,
