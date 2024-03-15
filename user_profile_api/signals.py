@@ -26,6 +26,7 @@ from user_profile_api.urls_services import (
     URL_MODIFY_CARD,
     URL_DELETE_CARD,
     URL_DEVICE_INFO,
+    URL_USERINFO_CAPABILITIES,
 )
 from users_admin.settings import BASE_URL, DEVICE_UUID, GATEWAY_USER, GATEWAY_PASSWORD, GATEWAY_PORT
 from requests.auth import HTTPDigestAuth
@@ -42,6 +43,9 @@ from unidecode import unidecode
 # de tener conectado un dispositivo
 
 mockeo = False
+
+listaUserVerify = "cardAndPw,card,fp,fpAndPw,fpOrCard,fpAndCard,fpAndCardAndPw,faceOrFpOrCardOrPw,faceAndFp,faceAndPw,faceAndCard,face,faceAndFpAndCard,faceAndPwAndFp,fpOrface,cardOrFace,cardOrFaceOrFp"
+listaUserVerify = listaUserVerify.split(',')
 
 # Señal que se acciona al detectar un cambio en las relaciones M2M de la tabla
 # UserProfile. Se ejecuta si se carga un usuario relacionado a ciertos horarios.
@@ -128,6 +132,35 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 print("Testeando")
                 print(plan_template_no)
 
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_USERINFO_CAPABILITIES}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                lista_metodo_verificar = json.loads(response.text)
+                lista_metodo_verificar = lista_metodo_verificar["UserInfo"]["userVerifyMode"]["@opt"]
+                
+                print("Elegido antes: ", instance.userVerifyMode)
+
+                print("Lista ", lista_metodo_verificar)
+
+                verificado_elegido = None 
+
+                if instance.userVerifyMode not in lista_metodo_verificar.split(','):                    
+
+                    verificado_elegido = "cardOrFace"
+                    print("Se elige: ", verificado_elegido)
+                
+                else:
+                    print("No se cambia")
+
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_DEVICE_INFO}?format=json"
                 full_url = f"{base_url}{record_url}"
@@ -136,7 +169,6 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 response = requests.get(
                     full_url,
                     headers=headers,
-                    data=json.dumps(data),
                     auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
                 )
 
@@ -184,7 +216,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
                     
@@ -213,7 +245,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
                     
@@ -344,6 +376,35 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                     return
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_USERINFO_CAPABILITIES}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                lista_metodo_verificar = json.loads(response.text)
+                lista_metodo_verificar = lista_metodo_verificar["UserInfo"]["userVerifyMode"]["@opt"]
+                
+                print("Elegido antes: ", instance.userVerifyMode)
+
+                print("Lista ", lista_metodo_verificar)
+                
+                verificado_elegido = None 
+
+                if instance.userVerifyMode not in lista_metodo_verificar.split(','):                    
+
+                    verificado_elegido = "cardOrFace"
+                    print("Se elige: ", verificado_elegido)
+                
+                else:
+                    print("No se cambia")
+
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_DEVICE_INFO}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -351,7 +412,6 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 response = requests.get(
                     full_url,
                     headers=headers,
-                    data=json.dumps(data),
                     auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
                 )
 
@@ -399,7 +459,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
 
@@ -428,7 +488,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                         }
                                     ],
                                     "localUIRight": instance.is_staff,
-                                    "userVerifyMode": instance.userVerifyMode
+                                    "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                                 }
                             }
                     
@@ -471,6 +531,34 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                     return
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_USERINFO_CAPABILITIES}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                lista_metodo_verificar = json.loads(response.text)
+                lista_metodo_verificar = lista_metodo_verificar["UserInfo"]["userVerifyMode"]["@opt"]
+                
+                print("Elegido antes: ", instance.userVerifyMode)
+
+                print("Lista ", lista_metodo_verificar)
+                
+                verificado_elegido = None 
+
+                if instance.userVerifyMode not in lista_metodo_verificar.split(','):                    
+
+                    verificado_elegido = "cardOrFace"
+                    print("Se elige: ", verificado_elegido)
+                
+                else:
+                    print("No se cambia")
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_DEVICE_INFO}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -478,7 +566,6 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                 response = requests.get(
                     full_url,
                     headers=headers,
-                    data=json.dumps(data),
                     auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
                 )
 
@@ -526,7 +613,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
 
@@ -555,7 +642,7 @@ def update_user_subjects(sender, instance, action, pk_set, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
 
@@ -674,6 +761,34 @@ def send_user_data(sender, instance, created, **kwargs):
             for ip_address in ips:
 
                 base_url = "http://{}:{}".format(ip_address, GATEWAY_PORT)
+                record_url = f"{URL_USERINFO_CAPABILITIES}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                lista_metodo_verificar = json.loads(response.text)
+                lista_metodo_verificar = lista_metodo_verificar["UserInfo"]["userVerifyMode"]["@opt"]
+                
+                print("Elegido antes: ", instance.userVerifyMode)
+
+                print("Lista ", lista_metodo_verificar)
+                
+                verificado_elegido = None 
+
+                if instance.userVerifyMode not in lista_metodo_verificar.split(','):                    
+
+                    verificado_elegido = "cardOrFace"
+                    print("Se elige: ", verificado_elegido)
+                
+                else:
+                    print("No se cambia")
+
+                base_url = "http://{}:{}".format(ip_address, GATEWAY_PORT)
                 record_url = f"{URL_DEVICE_INFO}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -681,7 +796,6 @@ def send_user_data(sender, instance, created, **kwargs):
                 response = requests.get(
                     full_url,
                     headers=headers,
-                    data=json.dumps(data),
                     auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
                 )
 
@@ -728,7 +842,7 @@ def send_user_data(sender, instance, created, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
 
@@ -756,7 +870,7 @@ def send_user_data(sender, instance, created, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
                     
@@ -804,6 +918,34 @@ def send_user_data(sender, instance, created, **kwargs):
                 print(ip_seleccionada)
 
                 base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
+                record_url = f"{URL_USERINFO_CAPABILITIES}?format=json"
+                full_url = f"{base_url}{record_url}"
+                headers = {"Content-type": "application/json"}
+
+                response = requests.get(
+                    full_url,
+                    headers=headers,
+                    auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
+                )
+
+                lista_metodo_verificar = json.loads(response.text)
+                lista_metodo_verificar = lista_metodo_verificar["UserInfo"]["userVerifyMode"]["@opt"]
+                
+                print("Elegido antes: ", instance.userVerifyMode)
+
+                print("Lista ", lista_metodo_verificar)
+                
+                verificado_elegido = None 
+
+                if instance.userVerifyMode not in lista_metodo_verificar.split(','):                    
+
+                    verificado_elegido = "cardOrFace"
+                    print("Se elige: ", verificado_elegido)
+                
+                else:
+                    print("No se cambia")
+
+                base_url = "http://{}:{}".format(ip_seleccionada, GATEWAY_PORT)
                 record_url = f"{URL_DEVICE_INFO}?format=json"
                 full_url = f"{base_url}{record_url}"
                 headers = {"Content-type": "application/json"}
@@ -811,7 +953,6 @@ def send_user_data(sender, instance, created, **kwargs):
                 response = requests.get(
                     full_url,
                     headers=headers,
-                    data=json.dumps(data),
                     auth=HTTPDigestAuth(GATEWAY_USER, GATEWAY_PASSWORD),
                 )
 
@@ -858,7 +999,7 @@ def send_user_data(sender, instance, created, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
 
@@ -886,11 +1027,11 @@ def send_user_data(sender, instance, created, **kwargs):
                                     }
                                 ],
                                 "localUIRight": instance.is_staff,
-                                "userVerifyMode": instance.userVerifyMode
+                                "userVerifyMode": verificado_elegido if verificado_elegido is not None else instance.userVerifyMode
                             }
                         }
 
-                    print('Firmware viejo')
+                    print('Firmware nuevo')
 
                 response = requests.put(
                     full_url,
@@ -1279,7 +1420,8 @@ def enviar_horario(sender, instance, **kwargs):
     full_url = f"{base_url}{record_url}"
     headers = {"Content-type": "application/json"}
 
-
+    print("Puerto:")
+    print(GATEWAY_PORT)
     response = requests.put(
         full_url,
         headers=headers,
@@ -1324,6 +1466,7 @@ def enviar_horario(sender, instance, **kwargs):
             raise Exception("Error registrando el template de horario: {}".format(response.text))
     else:
         print(full_url)
+        print("ERROR ACÁ")
         raise Exception("Error registrando el horario: {}".format(response.text))
     
 
