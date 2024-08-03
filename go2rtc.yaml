@@ -1,0 +1,11 @@
+api:
+  base_path: ''
+  listen: :1984
+  origin: ''
+  static_dir: ''
+rtsp:
+  default_query: video=h264
+  listen: :8554
+streams:
+  nuevo:
+  - rtsp://admin:unraf1234@181.189.221.10:554/ISAPI/Streaming/Channels/101

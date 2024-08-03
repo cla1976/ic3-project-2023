@@ -68,4 +68,4 @@ python manage.py runserver
 
 Constribuyen al proyecto:
 
-Alumnos de la catedra IC3
+Alumnos de la catedra IC3 + IC4
